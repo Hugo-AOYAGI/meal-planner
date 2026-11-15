@@ -11,7 +11,7 @@ WorkingDirectory=%h/meal-planner
 ExecStart=%h/.bun/bin/bun src/server/index.ts
 Environment=PORT=4173
 # Environment=ANTHROPIC_API_KEY=sk-ant-...   # optional: bill the API instead of the Claude login
-# Environment=MEAL_PLANNER_MODEL=sonnet
+# Environment=MEAL_PLANNER_MODEL=claude-sonnet-5-5
 Restart=on-failure
 RestartSec=3
 
