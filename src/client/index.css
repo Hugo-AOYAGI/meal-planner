@@ -1,0 +1,193 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/bricolage-grotesque";
+
+/* dark: never active (light mode only); keeps shadcn dark: classes inert instead of following the OS. */
+@custom-variant dark (&:is(.dark *));
+
+/* Light mode only. "Marché": cream page, ink text, flat blocks of colour, almost no lines.
+   shadcn variables are mapped onto these tokens below. */
+:root {
+  --background: #fffaf0; /* cream page */
+  --surface: #fffdf7; /* popovers, sheets, inputs */
+  --subtle: #f1e8d6; /* sand: neutral blocks, quiet fills */
+  --active: #e8dcc3; /* hover / pressed fills */
+  --border: #e6dcc6;
+  --border-strong: #cdbfa2;
+  --foreground: #1c1a15; /* ink */
+  --muted-foreground: #4a453b;
+  --dim: rgb(28 26 21 / 0.68); /* tertiary text; translucent so it also reads on colour blocks */
+  --brand: #1c1a15; /* focus rings */
+  --brand-text: #b23d18; /* links, "à essayer" */
+
+  /* block colours: they tell blocks apart and carry no meaning */
+  --sun: #ffd35c;
+  --tomato: #ff8e6b;
+  --leaf: #a5d99a;
+  --sky: #a9d4f0;
+  --lilac: #cbbdf2;
+  --rose: #f8b6c9;
+  --day-1: var(--sun);
+  --day-2: var(--tomato);
+  --day-3: var(--leaf);
+  --day-4: var(--sky);
+  --day-5: var(--lilac);
+  --day-6: var(--rose);
+  --day-7: var(--sun);
+
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --primary: var(--foreground);
+  --primary-foreground: #fffaf0;
+  --secondary: var(--subtle);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--subtle);
+  --accent: var(--active); /* shadcn's "accent" is a neutral hover fill, not the brand colour */
+  --accent-foreground: var(--foreground);
+  --destructive: #b42318;
+  --input: var(--border-strong);
+  --ring: var(--brand);
+  --chart-1: var(--tomato);
+  --chart-2: var(--sun);
+  --chart-3: var(--leaf);
+  --chart-4: var(--sky);
+  --chart-5: var(--lilac);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--foreground);
+  --sidebar-primary-foreground: #fffaf0;
+  --sidebar-accent: var(--active);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--brand);
+
+  --radius: 12px;
+}
+
+@theme inline {
+  --font-sans: "Bricolage Grotesque Variable", system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-active: var(--active);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-dim: var(--dim);
+  --color-sun: var(--sun);
+  --color-brand: var(--brand);
+  --color-brand-text: var(--brand-text);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-2xl: 18px;
+  --radius-3xl: 22px;
+  --radius-4xl: 26px;
+
+  --shadow-card: none;
+  --shadow-panel: 0 8px 28px -8px rgb(28 26 21 / 0.18);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-color: var(--border-strong) transparent;
+    scrollbar-width: thin;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    caret-color: var(--brand);
+  }
+  ::selection {
+    background: var(--sun);
+  }
+  button,
+  [role="tab"],
+  label {
+    touch-action: manipulation;
+  }
+  button:not(:disabled),
+  [role="tab"],
+  [role="combobox"] {
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility micro-label {
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* section and page titles */
+@utility display {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+/* marker-pen highlight under the active tab's label */
+@utility hl {
+  box-shadow: inset 0 -0.5em 0 var(--sun);
+}
+
+/* a list as one sand block; rows are split by a strip of page colour instead of a rule */
+@utility block-list {
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--subtle);
+  & > * + * {
+    border-top: 2px solid var(--background);
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794663163234,
+      "tag": "0000_colorful_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794664893327,
+      "tag": "0001_big_la_nuit",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794680847380,
+      "tag": "0002_careless_vin_gonzales",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794681647579,
+      "tag": "0003_foamy_maelstrom",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794700554215,
+      "tag": "0004_curious_madelyne_pryor",
+      "breakpoints": true
+    }
+  ]
+}

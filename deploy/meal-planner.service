@@ -1,0 +1,19 @@
+# systemd user unit. Install:
+#   mkdir -p ~/.config/systemd/user && cp deploy/meal-planner.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now meal-planner
+#   loginctl enable-linger "$USER"      # start at boot without a login session
+[Unit]
+Description=Meal planner
+After=network.target
+
+[Service]
+WorkingDirectory=%h/meal-planner
+ExecStart=%h/.bun/bin/bun src/server/index.ts
+Environment=PORT=4173
+# Environment=ANTHROPIC_API_KEY=sk-ant-...   # optional: bill the API instead of the Claude login
+# Environment=MEAL_PLANNER_MODEL=sonnet
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
