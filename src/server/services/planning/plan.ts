@@ -57,6 +57,7 @@ export function getDays(from: string, days: number): DayPlan {
             recipeName: r?.name ?? null,
             recipeOptions: options.filter((o) => o.mealId === m.id).map(({ id, name }) => ({ id, name })),
             kcalPerPerson: r && r.nutrition.linesCounted > 0 ? r.nutrition.perPerson.kcal : null,
+            excluded: e.excluded,
           };
         });
       // served in course order, whatever the order they were added in
@@ -114,8 +115,15 @@ export function applySlot({ date, moment, servings, entries }: SetSlotInput): vo
       tx.update(planSlot).set({ servings }).where(eq(planSlot.id, existing.id)).run();
     }
     if (resolved) {
+      // entries are rewritten, so a meal left out of the shopping list stays out as long as it stays in the slot
+      const left = tx.select({ mealId: planEntry.mealId }).from(planEntry).where(and(eq(planEntry.slotId, slotId!), eq(planEntry.excluded, true))).all().map((r) => r.mealId);
       tx.delete(planEntry).where(eq(planEntry.slotId, slotId!)).run();
-      if (resolved.length) tx.insert(planEntry).values(resolved.map((r) => ({ ...r, slotId: slotId! }))).run();
+      const values = resolved.map((r) => {
+        const i = left.indexOf(r.mealId);
+        if (i >= 0) left.splice(i, 1);
+        return { ...r, slotId: slotId!, excluded: i >= 0 };
+      });
+      if (values.length) tx.insert(planEntry).values(values).run();
     }
   });
 }

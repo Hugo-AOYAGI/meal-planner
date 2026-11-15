@@ -36,6 +36,8 @@ export const slotEntrySchema = z.object({
   recipeOptions: z.array(z.object({ id: idSchema, name: z.string() })),
   /** kcal per person of the chosen recipe; null when no recipe or no countable line */
   kcalPerPerson: z.number().nullable(),
+  /** left out of the shopping list */
+  excluded: z.boolean(),
 });
 export type SlotEntry = z.infer<typeof slotEntrySchema>;
 
@@ -133,6 +135,19 @@ export const shoppingExtraSchema = z.object({
 });
 export type ShoppingExtra = z.infer<typeof shoppingExtraSchema>;
 
+export const shoppingMealSchema = z.object({
+  /** the plan entry: what `excluded` is set on */
+  entryId: idSchema,
+  mealId: idSchema,
+  name: z.string(),
+  date: dateSchema,
+  moment: momentSchema,
+  excluded: z.boolean(),
+  /** no recipe, or a recipe without ingredients: adds nothing to the list, excluded or not */
+  empty: z.boolean(),
+});
+export type ShoppingMeal = z.infer<typeof shoppingMealSchema>;
+
 export const shoppingListSchema = z.object({
   /** the period covered: today and the last day, both included */
   from: dateSchema,
@@ -141,10 +156,18 @@ export const shoppingListSchema = z.object({
   aisles: z.array(z.object({ aisle: aisleSchema, items: z.array(shoppingItemSchema) })),
   /** lines added by hand; the same whatever the period */
   extras: z.array(shoppingExtraSchema),
-  /** meals planned in the period that add nothing to the list: no recipe, or a recipe without ingredients */
-  uncounted: z.array(z.object({ mealId: idSchema, name: z.string() })),
+  /** every meal planned in the period, in date order, whether counted or not */
+  meals: z.array(shoppingMealSchema),
 });
 export type ShoppingList = z.infer<typeof shoppingListSchema>;
+
+/** Leaves a planned meal (a plan entry) out of the list, or puts it back; answers with the list of `days` days. */
+export const shoppingExcludeInputSchema = z.object({
+  days: shoppingDaysSchema,
+  entryId: idSchema,
+  excluded: z.boolean(),
+});
+export type ShoppingExcludeInput = z.infer<typeof shoppingExcludeInputSchema>;
 
 /** Ticks (or unticks) an ingredient of the list covering `days` days. */
 export const shoppingCheckInputSchema = z.object({

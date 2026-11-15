@@ -1,6 +1,6 @@
 import { asc, eq, inArray, lt, sql } from "drizzle-orm";
 import { addDays, daysFrom, today } from "@shared/dates";
-import type { ShoppingCheckInput, ShoppingExtra, ShoppingExtraInput, ShoppingExtraUpdate, ShoppingList } from "@shared/schemas";
+import type { ShoppingCheckInput, ShoppingExcludeInput, ShoppingExtra, ShoppingExtraInput, ShoppingExtraUpdate, ShoppingList } from "@shared/schemas";
 import { db } from "../../db";
 import { meal, planEntry, planSlot, shoppingCheck, shoppingExtra } from "../../db/schema";
 import { aggregateShopping, type ShoppingSourceLine } from "../calc/shopping";
@@ -14,7 +14,7 @@ const lastDay = (days: number) => addDays(today(), days - 1);
 export function getShoppingList(days: number): ShoppingList {
   const dates = daysFrom(today(), days);
   const entries = db
-    .select({ recipeId: planEntry.recipeId, servings: planSlot.servings, date: planSlot.date, mealId: meal.id, mealName: meal.name })
+    .select({ entryId: planEntry.id, excluded: planEntry.excluded, recipeId: planEntry.recipeId, servings: planSlot.servings, date: planSlot.date, moment: planSlot.moment, mealId: meal.id, mealName: meal.name })
     .from(planEntry)
     .innerJoin(planSlot, eq(planSlot.id, planEntry.slotId))
     .innerJoin(meal, eq(meal.id, planEntry.mealId))
@@ -23,10 +23,9 @@ export function getShoppingList(days: number): ShoppingList {
     .all();
   const recipes = new Map(getRecipes([...new Set(entries.flatMap((e) => (e.recipeId ? [e.recipeId] : [])))]).map((r) => [r.id, r]));
 
-  const uncounted = new Map<number, string>();
   const lines: ShoppingSourceLine[] = entries.flatMap((e) => {
+    if (e.excluded) return [];
     const r = e.recipeId ? recipes.get(e.recipeId) : undefined;
-    if (!r?.lines.length) uncounted.set(e.mealId, e.mealName);
     return (r?.lines ?? []).map((l) => ({
       ingredientId: l.ingredient.id,
       ingredientName: l.ingredient.name,
@@ -46,7 +45,15 @@ export function getShoppingList(days: number): ShoppingList {
     to: dates.at(-1)!,
     aisles: aggregateShopping(lines, bought),
     extras: listShoppingExtras(),
-    uncounted: [...uncounted].map(([mealId, name]) => ({ mealId, name })),
+    meals: entries.map((e) => ({
+      entryId: e.entryId,
+      mealId: e.mealId,
+      name: e.mealName,
+      date: e.date,
+      moment: e.moment,
+      excluded: e.excluded,
+      empty: !(e.recipeId && recipes.get(e.recipeId)?.lines.length),
+    })),
   };
 }
 
@@ -59,6 +66,12 @@ export function setShoppingCheck({ days, ingredientId, checked }: ShoppingCheckI
       .onConflictDoUpdate({ target: shoppingCheck.ingredientId, set: { until: sql`max(${shoppingCheck.until}, excluded.until)` } })
       .run();
   } else db.delete(shoppingCheck).where(eq(shoppingCheck.ingredientId, ingredientId)).run();
+  return getShoppingList(days);
+}
+
+/** Leaves a planned meal out of the list (or puts it back); a slot rewrite keeps the choice, see `applySlot`. */
+export function setShoppingExclusion({ days, entryId, excluded }: ShoppingExcludeInput): ShoppingList {
+  if (!db.update(planEntry).set({ excluded }).where(eq(planEntry.id, entryId)).returning().get()) throw notFound("Repas planifié", entryId);
   return getShoppingList(days);
 }
 
