@@ -7,9 +7,13 @@ import { Button } from "@/components/ui/actions/button";
 import { Checkbox } from "@/components/ui/actions/checkbox";
 import { Label } from "@/components/ui/inputs/label";
 import { useSettings, useUpdateSettings } from "@/lib/api/queries";
+import { MembersList } from "./MembersList";
 import { PreferencesList } from "./PreferencesList";
 
-/** Household size (default servings of new slots), the moments a draw starts with, and the household preferences. */
+/**
+ * Household size (default servings of new slots), the moments a draw starts with, the draw game's players
+ * and quick-meal limit, and the household preferences.
+ */
 export function SettingsPopover() {
   const [open, setOpen] = useState(false);
   const settings = useSettings().data;
@@ -49,6 +53,7 @@ export function SettingsPopover() {
           </Label>
         ))}
       </div>
+      <MembersList settings={settings} />
       <PreferencesList />
     </Overlay>
   );

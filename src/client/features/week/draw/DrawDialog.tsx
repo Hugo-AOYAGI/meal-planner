@@ -1,72 +1,56 @@
-import { Dices } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import type { Moment } from "@shared/constants";
-import { today } from "@shared/dates";
 import { Button } from "@/components/ui/actions/button";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/overlays/dialog";
-import { DrawControls } from "./DrawControls";
-import { SuggestionCards } from "./SuggestionCards";
-import { useDrawSession } from "./use-draw-session";
+import { Skeleton } from "@/components/ui/feedback/skeleton";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/overlays/dialog";
+import { GameHeader } from "./game/GameHeader";
+import { IdentityPicker } from "./game/IdentityPicker";
+import { PassScreen } from "./game/PassScreen";
+import { CatchupScreen } from "./screens/CatchupScreen";
+import { HandScreen } from "./screens/HandScreen";
+import { MatchBurst } from "./screens/MatchBurst";
+import { PlacingScreen } from "./screens/PlacingScreen";
+import type { GameSession } from "./use-game-session";
 
-interface DrawProps {
-  /** first day drawn */
-  date: string;
-  /** draw this one day and redraw what it holds, instead of filling the empty slots of the next days */
-  oneDay?: boolean;
-  /** the moment enabled at first, instead of those of the settings */
-  moment?: Moment;
+function Closing({ text, onClose }: { text: string; onClose: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <p className="font-bold">{text}</p>
+      <Button variant="outline" className="h-11" onClick={onClose}>
+        Fermer
+      </Button>
+    </div>
+  );
 }
 
-function DrawPanel({ date, oneDay = false, moment, onApplied }: DrawProps & { onApplied: () => void }) {
-  const draw = useDrawSession({ date, oneDay, moment, onApplied });
-  const { options, suggestions } = draw;
+function GameBody({ session }: { session: GameSession }) {
+  const { view, identity } = session;
+  const close = () => session.setOpen(false);
+  if (session.asking) return <IdentityPicker members={identity.members} onPick={session.choose} />;
+  if (session.starting) return <Skeleton className="h-72 w-full" />;
+  if (!view) return <Closing text="Le tirage est terminé." onClose={close} />;
+  if (session.passing) return <PassScreen next={identity.memberOf(view.me)} onContinue={session.handOver} />;
+  if (view.phase === "done") return <Closing text="C’est dans le planning ✓" onClose={close} />;
   return (
-    <fieldset disabled={draw.proposing || draw.applying} className="flex min-w-0 flex-col gap-4">
-      <DrawControls options={options} oneDay={oneDay} onChange={draw.changeOptions} />
-      {suggestions?.length ? (
-        <SuggestionCards
-          date={date}
-          days={options.days}
-          moments={options.moments}
-          suggestions={suggestions}
-          locked={draw.locked}
-          onToggleLock={draw.toggleLock}
-          onSwap={draw.swap}
-        />
-      ) : (
-        suggestions && <p className="text-sm text-dim">Aucun repas disponible pour ces jours et ces filtres.</p>
-      )}
-      {draw.error && (
-        <p role="alert" className="text-sm text-red-700">
-          {draw.error}
-        </p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <Button variant={suggestions ? "outline" : "default"} disabled={!options.moments.length} onClick={draw.propose}>
-          <Dices />
-          {draw.proposing ? "Tirage…" : suggestions ? "Relancer" : "Proposer"}
-        </Button>
-        {!!suggestions?.length && (
-          <Button onClick={draw.apply}>{draw.applying ? "Ajout…" : "Ajouter au planning"}</Button>
-        )}
-      </div>
-    </fieldset>
+    <>
+      <GameHeader session={session} view={view} />
+      {view.phase === "picking" && <HandScreen session={session} view={view} />}
+      {view.phase === "catchup" && <CatchupScreen session={session} view={view} />}
+      {view.phase === "placing" && <PlacingScreen session={session} view={view} />}
+      <MatchBurst view={view} />
+    </>
   );
 }
 
 /**
- * The "Tirer" flow, opened by `children` (the button): choose what to draw, look at the proposals, keep or move some,
- * add them to the planning. Nothing is drawn for a day that is over. Each opening starts from scratch.
+ * The draw game's sheet, opened by the planning's "Tirer" and "Ce soir": the hand at once, then the reveal,
+ * the catch-up and the result. Closing only hides it: "Tirer" again resumes the game running.
  */
-export function DrawDialog({ children, ...draw }: DrawProps & { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  if (draw.date < today()) return null;
+export function DrawDialog({ session }: { session: GameSession }) {
+  const quick = (session.view ?? session.running)?.mode === "quick";
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={session.open} onOpenChange={session.setOpen}>
       <DialogContent className="gap-4 sm:max-w-xl" aria-describedby={undefined}>
-        <DialogTitle className="display text-2xl">Tirer des repas</DialogTitle>
-        <DrawPanel {...draw} onApplied={() => setOpen(false)} />
+        <DialogTitle className="display text-2xl">{quick ? "🌙 Un repas pour ce soir" : "Tirage"}</DialogTitle>
+        <GameBody session={session} />
       </DialogContent>
     </Dialog>
   );

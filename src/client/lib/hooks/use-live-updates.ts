@@ -1,13 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { clientId } from "@/lib/api/api";
-import { invalidate } from "@/lib/api/query";
+import { invalidate, keys } from "@/lib/api/query";
 
 const DEBOUNCE_MS = 300;
 const RETRY_MS = 5_000;
 
 /**
  * Refreshes every query when another device (or the assistant) changes the data: one EventSource on /api/events.
+ * A `draw` event (a move in the draw game, from any device) refreshes the game views only.
  * Also refreshes when the page comes back (a sleeping phone missed events) and when the stream reconnects.
  * Mount once, at the app root.
  */
@@ -31,6 +32,7 @@ export function useLiveUpdates() {
       es.addEventListener("changed", (e) => {
         if (e.data !== clientId) refresh(); // our own writes already refreshed this screen
       });
+      es.addEventListener("draw", () => void queryClient.invalidateQueries({ queryKey: keys.game.all }));
       es.onopen = () => {
         if (opened) refresh(); // reconnection: events were missed meanwhile
         opened = true;

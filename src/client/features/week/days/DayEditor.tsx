@@ -1,4 +1,5 @@
 import { Dices, Moon, Sun } from "lucide-react";
+import { useState } from "react";
 import { MOMENTS, MOMENT_LABELS, type Moment } from "@shared/constants";
 import type { Slot } from "@shared/schemas";
 import { MealPicker } from "@/components/controls/MealPicker";
@@ -6,7 +7,7 @@ import { fullDayLabel } from "@/lib/formatting/format";
 import { useSetSlot } from "@/lib/api/queries";
 import { cn } from "@/lib/formatting/utils";
 import { SlotEditor } from "@/features/week/slots/SlotEditor";
-import { DrawDialog } from "@/features/week/draw/DrawDialog";
+import { DiceFan } from "@/features/week/dice/DiceFan";
 import { Button } from "@/components/ui/actions/button";
 
 export type Day = Record<Moment, Slot>;
@@ -29,6 +30,8 @@ export interface DayEditorProps {
 /** What a day opens: choose lunch or dinner, then edit that meal, or fill it when it is still empty. */
 export function DayEditor({ day, moment, onMoment, onClose, onView }: DayEditorProps) {
   const setSlot = useSetSlot();
+  // the dice's cards, shown in place for the empty meal they were asked for
+  const [drawing, setDrawing] = useState<Moment | null>(null);
   const slot = day[moment];
   return (
     <div className="flex flex-col gap-3">
@@ -71,12 +74,14 @@ export function DayEditor({ day, moment, onMoment, onClose, onView }: DayEditorP
               onClose();
             }}
           />
-          <DrawDialog date={slot.date} oneDay moment={moment}>
-            <Button variant="outline" size="sm">
+          {drawing === moment ? (
+            <DiceFan date={slot.date} moment={moment} onApplied={onClose} />
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setDrawing(moment)}>
               <Dices />
               Tirer
             </Button>
-          </DrawDialog>
+          )}
         </>
       )}
     </div>

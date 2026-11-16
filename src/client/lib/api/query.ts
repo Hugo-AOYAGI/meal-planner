@@ -39,6 +39,11 @@ export const keys = {
   },
   settings: ["settings"] as const,
   preferences: ["preferences"] as const,
+  /** the draw game, as seen by one player */
+  game: {
+    all: ["game"] as const,
+    view: (player: string) => ["game", player] as const,
+  },
   chat: {
     all: ["chat"] as const,
     list: ["chat", "list"] as const,
@@ -51,7 +56,7 @@ export const keys = {
  * - `plan`: a slot changed or the draw ran (meals' last-cooked and shopping refresh too);
  * - `shopping`: only ticks / free lines changed;
  * - `ingredients`: an ingredient changed (recipes and shopping show its name/aisle/values);
- * - `all`: after an agent run.
+ * - `all`: after an agent run. The dice's open cards are left alone, so they do not reshuffle under the finger.
  */
 export const invalidate = {
   meals: (qc: QueryClient) =>
@@ -63,5 +68,5 @@ export const invalidate = {
     Promise.all([keys.ingredients.all, keys.meals.all, ["recipes"], keys.plan.all, keys.shopping.all].map((queryKey) => qc.invalidateQueries({ queryKey }))),
   settings: (qc: QueryClient) => qc.invalidateQueries({ queryKey: keys.settings }),
   preferences: (qc: QueryClient) => qc.invalidateQueries({ queryKey: keys.preferences }),
-  all: (qc: QueryClient) => qc.invalidateQueries(),
+  all: (qc: QueryClient) => qc.invalidateQueries({ predicate: (query) => query.queryKey[0] !== "slot-cards" }),
 };

@@ -7,7 +7,7 @@ import { formatNumber, fullDayLabel } from "@/lib/formatting/format";
 import { cn } from "@/lib/formatting/utils";
 import { MealSheet } from "@/features/meals/panels/MealSheet";
 import { type Day, DayEditor, type DayEditorProps } from "@/features/week/days/DayEditor";
-import { DrawDialog } from "@/features/week/draw/DrawDialog";
+import { SlotDice } from "@/features/week/dice/SlotDice";
 
 interface SlotCardProps {
   /** the meal this card shows */
@@ -135,7 +135,7 @@ export function SlotCard({ slot, day, variant, named }: SlotCardProps) {
         onSelect={(mealId) => setViewing((view) => view && { ...view, mealId, recipeId: null })}
         onClose={() => setViewing(null)}
       />
-      <DrawDialog date={slot.date} oneDay>
+      <SlotDice date={slot.date} moment={slot.moment}>
         <button
           type="button"
           aria-label={filled ? "Tirer à nouveau" : "Tirer un repas"}
@@ -146,7 +146,7 @@ export function SlotCard({ slot, day, variant, named }: SlotCardProps) {
         >
           <Dices className="size-4" />
         </button>
-      </DrawDialog>
+      </SlotDice>
     </div>
   );
 }
