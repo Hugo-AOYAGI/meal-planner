@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
+import { scheduleBackgroundJobs } from "./agent/background";
 import { chatRoute } from "./agent/chat-route";
 import { scheduleNightlyBackup } from "./backup";
 import { emitOnWrite, eventsRoute } from "./events";
@@ -28,6 +29,7 @@ if (existsSync(dist)) {
 }
 
 scheduleNightlyBackup();
+if (process.env.MEAL_PLANNER_BACKGROUND !== "off") scheduleBackgroundJobs();
 
 // idleTimeout 0: a chat stream can stay silent for a long time while the agent runs a tool (Bun's default cuts it at 10 s).
 export default { port: PORT, hostname: "127.0.0.1", idleTimeout: 0, fetch: app.fetch };

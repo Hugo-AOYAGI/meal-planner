@@ -32,7 +32,7 @@ Ajouter une recette :
 - étapes courtes : une action par étape, une ou deux phrases, sans numéro ;
 - crée le repas, puis sa recette ; vérifie qu'un repas du même nom n'existe pas déjà.
 
-Idées de repas : regarde d'abord la bibliothèque (list_meals), ne propose que ce qui n'y est pas ; n'ajoute une proposition (status "to_try") que lorsque l'utilisateur dit laquelle.
+Idées de repas : regarde d'abord la bibliothèque (list_meals), ne propose que ce qui n'y est pas ; n'ajoute une proposition (status "to_try") que lorsque l'utilisateur dit laquelle. Le statut "idea" est réservé aux idées préparées en tâche de fond pour la carte « Nouveau » du tirage : ces repas n'apparaissent pas dans la bibliothèque tant qu'ils n'ont pas été tirés.
 
 Entrées et desserts : ce sont des repas de type "entree" ou "dessert", placés dans le même créneau que le plat (set_slot, dans entries) ; le tirage n'en choisit jamais. Avant de modifier un créneau, lis son contenu et conserve les autres éléments : entries remplace toute la liste.
 
