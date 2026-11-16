@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { MEAL_STATUSES } from "../constants";
 import { aisleSchema, dateSchema, idSchema, mealKindSchema, momentSchema } from "./common";
 
 // ---------- week plan ----------
@@ -72,7 +71,7 @@ export type DayPlan = z.infer<typeof dayPlanSchema>;
 
 // ---------- draw ----------
 /** Which meals a draw may pick: all of them, the usual ones, or those still to try. */
-export const drawStatusSchema = z.enum(["all", ...MEAL_STATUSES]);
+export const drawStatusSchema = z.enum(["all", "regular", "to_try"]);
 export type DrawStatus = z.infer<typeof drawStatusSchema>;
 
 /** What to draw: the moments of `days` days from `date`. */

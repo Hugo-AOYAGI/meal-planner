@@ -19,7 +19,8 @@ export const courseOf = (kind: MealKind): Course => (kind === "entree" || kind =
 export const byCourse = <T extends { mealKind: MealKind }>(entries: T[]): T[] =>
   entries.toSorted((a, b) => COURSES.indexOf(courseOf(a.mealKind)) - COURSES.indexOf(courseOf(b.mealKind)));
 
-export const MEAL_STATUSES = ["regular", "to_try"] as const;
+/** `idea`: prepared by the assistant for the draw's "Nouveau" card, hidden from the library until it is picked. */
+export const MEAL_STATUSES = ["regular", "to_try", "idea"] as const;
 export type MealStatus = (typeof MEAL_STATUSES)[number];
 
 /** The agents the chat can run on. */

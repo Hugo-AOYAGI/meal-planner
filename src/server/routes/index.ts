@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { AppError } from "../services/support/errors";
+import { gameRoute } from "./game";
 import { ciqualRoute, ingredientsRoute } from "./resources/ingredients";
 import { mealsRoute } from "./resources/meals";
 import { preferencesRoute } from "./resources/preferences";
@@ -16,6 +17,7 @@ export const api = new Hono()
   .route("/ciqual", ciqualRoute)
   .route("/plan", planRoute)
   .route("/settings", settingsRoute)
+  .route("/game", gameRoute)
   .route("/shopping", shoppingRoute);
 
 api.onError((err, c) => {

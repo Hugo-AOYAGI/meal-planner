@@ -1,4 +1,4 @@
-import { and, count, eq, lte, max } from "drizzle-orm";
+import { and, count, eq, lte, max, ne } from "drizzle-orm";
 import { today } from "@shared/dates";
 import { normalize } from "@shared/text";
 import type { MealDetail, MealInput, MealListQuery, MealSummary, MealUpdate } from "@shared/schemas";
@@ -50,12 +50,12 @@ function ingredientTexts(): Map<number, string> {
   return byMeal;
 }
 
-/** Longest since last cooked first; never cooked first of all; ties by name. */
+/** Longest since last cooked first; never cooked first of all; ties by name. Assistant ideas (`idea`) only when asked for. */
 export function listMeals({ q, excludes, kind, status }: MealListQuery = {}): MealSummary[] {
   const words = wordsOf(q);
   const excluded = wordsOf(excludes);
   const texts = words.length || excluded.length ? ingredientTexts() : new Map<number, string>();
-  return summaries(and(kind && eq(meal.kind, kind), status && eq(meal.status, status)))
+  return summaries(and(kind && eq(meal.kind, kind), status ? eq(meal.status, status) : ne(meal.status, "idea")))
     .filter((m) => {
       const name = normalize(m.name);
       const ingredients = texts.get(m.id) ?? "";

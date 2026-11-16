@@ -104,6 +104,15 @@ export const mealListQuerySchema = z.object({
 export type MealListQuery = z.infer<typeof mealListQuerySchema>;
 
 // ---------- settings ----------
+/** A household member, as the draw game knows them. `id` is stable; name and colour can change. */
+export const memberSchema = z.object({
+  id: z.string().min(1).max(40),
+  name: z.string().trim().min(1).max(30),
+  /** one of the palette tokens (sun, tomato, leaf, sky, lilac, rose) */
+  color: z.enum(["sun", "tomato", "leaf", "sky", "lilac", "rose"]),
+});
+export type Member = z.infer<typeof memberSchema>;
+
 export const settingsSchema = z.object({
   /** default servings for newly created slots */
   householdSize: z.number().int().positive().max(50),
@@ -111,11 +120,15 @@ export const settingsSchema = z.object({
   drawMoments: z.array(momentSchema),
   /** the agent behind the chat */
   assistant: z.enum(ASSISTANTS),
+  /** the people who play the draw; each device says which one it is */
+  members: z.array(memberSchema).max(6),
+  /** the quick draw only offers meals ready in this many minutes */
+  quickMaxMinutes: z.number().int().min(5).max(120),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 export const settingsUpdateSchema = patchOf(settingsSchema);
 export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>;
-export const DEFAULT_SETTINGS: Settings = { householdSize: 2, drawMoments: ["soir"], assistant: "claude" };
+export const DEFAULT_SETTINGS: Settings = { householdSize: 2, drawMoments: ["soir"], assistant: "claude", members: [], quickMaxMinutes: 25 };
 
 
 // ---------- household preferences ----------
