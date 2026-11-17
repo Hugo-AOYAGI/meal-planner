@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MEAL_KINDS, MEAL_KIND_LABELS, type MealKind } from "@shared/constants";
 import type { MealDetail, Recipe } from "@shared/schemas";
 import { ConfirmDelete } from "@/components/overlays/ConfirmDelete";
+import { ConfirmLeave } from "@/components/overlays/ConfirmLeave";
 import { LabeledField } from "@/components/controls/LabeledField";
 import { Button } from "@/components/ui/actions/button";
 import { Input } from "@/components/ui/inputs/input";
@@ -11,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/inputs/textarea";
 import { api, unwrap } from "@/lib/api/api";
 import { invalidate, keys } from "@/lib/api/query";
+import { useBackLayer } from "@/lib/hooks/use-back";
 import { draftToInput, recipeToDraft, type RecipeDraft } from "@/features/meals/editor/draft";
 import { RecipeFields } from "@/features/meals/editor/RecipeFields";
 
@@ -32,6 +34,15 @@ export function MealEditForm({ meal, recipe, onSaved, onCancel, onMealDeleted, o
   const [kind, setKind] = useState<MealKind>(meal?.kind ?? "plat");
   const [notes, setNotes] = useState(meal?.notes ?? "");
   const [draft, setDraft] = useState<RecipeDraft | null>(() => (recipe === null ? null : recipeToDraft(recipe === "new" ? null : recipe)));
+  // the back action leaves the editor like "Annuler", but asks first when something was changed
+  const snapshot = JSON.stringify({ name, kind, notes, draft });
+  const [initial] = useState(snapshot);
+  const [leaving, setLeaving] = useState(false);
+  useBackLayer(true, () => {
+    if (snapshot === initial) return onCancel();
+    setLeaving(true);
+    return false;
+  });
 
   const save = useMutation({
     mutationFn: async () => {
@@ -129,6 +140,7 @@ export function MealEditForm({ meal, recipe, onSaved, onCancel, onMealDeleted, o
           Enregistrer
         </Button>
       </div>
+      <ConfirmLeave open={leaving} onOpenChange={setLeaving} onLeave={onCancel} />
     </form>
   );
 }

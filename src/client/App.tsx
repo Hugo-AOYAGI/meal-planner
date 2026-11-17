@@ -5,7 +5,8 @@ import { MealsPage } from "@/features/meals/MealsPage";
 import { ShoppingPage } from "@/features/shopping/ShoppingPage";
 import { PlanningPage } from "@/features/week/PlanningPage";
 import { Button } from "@/components/ui/actions/button";
-import { setHash, useHash } from "@/lib/formatting/hash";
+import { goToTab, useHash } from "@/lib/formatting/hash";
+import { useBackLayer } from "@/lib/hooks/use-back";
 import { useLiveUpdates } from "@/lib/hooks/use-live-updates";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { useTabSwipe } from "@/lib/hooks/use-tab-swipe";
@@ -21,7 +22,7 @@ type TabId = (typeof TABS)[number]["id"];
 
 function useTab(): [(typeof TABS)[number], (id: TabId) => void] {
   const hash = useHash();
-  return [TABS.find((t) => t.id === hash.tab) ?? TABS[0]!, setHash];
+  return [TABS.find((t) => t.id === hash.tab) ?? TABS[0]!, (id) => goToTab(id, TABS[0]!.id)];
 }
 
 /** The three tabs as words; the active one gets the highlighter. */
@@ -85,6 +86,8 @@ export function App() {
     if (next) setTab(next.id);
   });
   const toggleChat = () => setChatOpen((open) => !open);
+  // on phones the chat covers the page: the back action closes it (on a wide screen it is a side panel, left alone)
+  useBackLayer(mobile && chatOpen, () => setChatOpen(false));
   // on phones the chat covers the page: following one of its links hides it (it stays as it was) while the linked
   // meal is open, and closing the meal brings it back
   const { id: hashId } = useHash();

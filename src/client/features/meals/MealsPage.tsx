@@ -1,6 +1,6 @@
 import { Plus, Search } from "lucide-react";
-import { useEffect, useState } from "react";
-import { setHash, useHash } from "@/lib/formatting/hash";
+import { useEffect, useRef, useState } from "react";
+import { leaveLinkedMeal, useHash } from "@/lib/formatting/hash";
 import type { MealListQuery } from "@shared/schemas";
 import { Toolbar } from "@/components/layout/Toolbar";
 import { TextTabs } from "@/components/layout/TextTabs";
@@ -32,14 +32,17 @@ export function MealsPage() {
   const [selected, setSelected] = useState<number | "new" | null>(null);
   const query = FILTERS.find((f) => f.value === filter)!.query;
   const meals = useMeals({ ...query, q: search.trim() || undefined });
-  // #repas/12 (a link from the chat) opens that meal
+  // #repas/12 (a link from the chat) opens that meal; leaving that entry (back action) closes it
   const linked = useHash().id;
+  const lastLinked = useRef<number | null>(null);
   useEffect(() => {
     if (linked !== null) setSelected(linked);
+    else if (lastLinked.current !== null) setSelected((s) => (s === lastLinked.current ? null : s));
+    lastLinked.current = linked;
   }, [linked]);
   const close = () => {
     setSelected(null);
-    if (linked !== null) setHash("repas");
+    if (linked !== null) leaveLinkedMeal();
   };
   const panel = selected !== null && <MealPanel selected={selected} onSelect={setSelected} onClose={close} />;
 
@@ -82,7 +85,7 @@ export function MealsPage() {
           {panel}
         </aside>
       )}
-      {!wide && <MealSheet selected={selected} onSelect={setSelected} onClose={close} />}
+      {!wide && <MealSheet selected={selected} onSelect={setSelected} onClose={close} back={linked === null} />}
     </div>
   );
 }
