@@ -9,9 +9,9 @@ import { addToReserve, currentGame, setGame, type Game } from "./store";
 
 const mealIdsOf = (cards: GameCard[]) => cards.flatMap((c) => c.meals.map((m) => m.id));
 export const needed = (game: Game) => Math.max(0, game.slots.length - game.matches.length);
-/** How many cards each player may pick this round: any they like, up to the slots still empty. */
+/** How many picks would fill the slots still empty: a target, not a limit (extra matches go to the reserve). */
 export const toPick = (game: Game) => Math.min(needed(game), game.hand.length);
-const roundHand = (game: Game) => handSize(game.mode, needed(game));
+const roundHand = (game: Game) => handSize(needed(game));
 const cardsById = (game: Game, ids: string[]) => game.hand.filter((c) => ids.includes(c.id));
 
 function deal(game: Game, count: number): GameCard[] {
@@ -162,7 +162,7 @@ function changeOptions(game: Game, change: Extract<GameAction, { type: "options"
     game.hand.splice(spare, 1);
   }
   for (const p of game.players) {
-    game.picks[p] = (game.picks[p] ?? []).filter((id) => game.hand.some((c) => c.id === id)).slice(0, n);
+    game.picks[p] = (game.picks[p] ?? []).filter((id) => game.hand.some((c) => c.id === id));
     game.ready[p] = false;
   }
   if (n === 0) toPlacing(game);
@@ -183,12 +183,10 @@ export function act(player: string, action: GameAction): Game | null {
     case "pick": {
       expect(game, "picking");
       if (!game.hand.some((c) => c.id === action.card)) throw new AppError("Carte inconnue.");
+      // no limit: the players hold back themselves, matches beyond the empty slots go to the reserve
       const picks = game.picks[player]!;
-      const n = needed(game);
       if (picks.includes(action.card)) picks.splice(picks.indexOf(action.card), 1);
-      else if (picks.length < n) picks.push(action.card);
-      else if (n === 1) picks.splice(0, 1, action.card);
-      else throw new AppError(`Déjà ${n} choix : retirez-en un d’abord.`);
+      else picks.push(action.card);
       game.ready[player] = false;
       break;
     }

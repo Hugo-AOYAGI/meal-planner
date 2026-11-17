@@ -21,15 +21,18 @@ const start = (days: number, player = "a") =>
 
 beforeEach(() => setGame(null));
 
-test("a duo game deals two cards per slot, hides the other's picks, and keeps only what both accepted", () => {
+test("a duo game deals a full hand, lets each pick past the slots, hides the other's picks, and keeps only what both accepted", () => {
   const game = start(2);
   act("b", { type: "join" });
   expect(game.slots).toHaveLength(2);
-  expect(game.hand).toHaveLength(4);
+  expect(game.hand).toHaveLength(6);
   const [c1, c2, c3] = game.hand.map((c) => c.id) as [string, string, string];
   act("a", { type: "pick", card: c1 });
   act("a", { type: "pick", card: c2 });
-  expect(() => act("a", { type: "pick", card: c3 })).toThrow();
+  // a third pick for two slots is allowed (the count just shows it); here it is taken back
+  act("a", { type: "pick", card: c3 });
+  expect(viewFor(game, "a").myPicks).toEqual([c1, c2, c3]);
+  act("a", { type: "pick", card: c3 });
   act("b", { type: "pick", card: c1 });
   act("b", { type: "pick", card: c3 });
   expect(viewFor(game, "b").myPicks).toEqual([c1, c3]);
@@ -114,14 +117,14 @@ test("changing the duration adapts the slots and the hand instead of starting ov
   act("a", { type: "options", options: { days: 4 } });
   expect(game.slots).toHaveLength(4);
   expect(game.hand).toHaveLength(6);
-  expect(game.hand.slice(0, 4).map((c) => c.id)).toEqual(first);
+  expect(game.hand.map((c) => c.id)).toEqual(first);
   expect(game.picks.a).toEqual([first[0]!]);
   act("a", { type: "options", options: { days: 1 } });
-  expect(game.hand).toHaveLength(3);
+  expect(game.hand).toHaveLength(6);
   expect(game.hand.map((c) => c.id)).toContain(first[0]!);
 });
 
-test("a long plan fits the screen: at most 6 cards, any number picked up to the empty slots, then another round", () => {
+test("a long plan fits the screen: 6 cards a round, extra picks go to the reserve", () => {
   const game = start(7);
   expect(game.hand).toHaveLength(6);
   expect(viewFor(game, "a").toPick).toBe(6);
@@ -133,8 +136,12 @@ test("a long plan fits the screen: at most 6 cards, any number picked up to the 
   expect(viewFor(game, "a").toPick).toBe(3);
   expect(game.hand).toHaveLength(6);
   expect(game.hand.some((c) => ids.includes(c.id))).toBe(false);
-  for (const id of game.hand.slice(0, 3).map((c) => c.id)) act("a", { type: "pick", card: id });
-  expect(() => act("a", { type: "pick", card: game.hand[3]!.id })).toThrow();
+  const before = readReserve().length;
+  for (const id of game.hand.slice(0, 4).map((c) => c.id)) act("a", { type: "pick", card: id });
+  act("a", { type: "ready", ready: true });
+  expect(game.phase).toBe("placing");
+  expect(Object.keys(game.placement)).toHaveLength(7);
+  expect(readReserve()).toHaveLength(before + 1);
 });
 
 test("once members are declared, only they play, and a game started by someone else is dropped", () => {
@@ -153,7 +160,7 @@ test("with every slot already planned, nothing is dealt until the duration grows
   expect(game.slots).toEqual([]);
   expect(game.hand).toEqual([]);
   act("a", { type: "options", options: { days: 3 } });
-  expect(game.hand).toHaveLength(4);
+  expect(game.hand).toHaveLength(6);
 });
 
 test("filled slots are not drawn, and a start while a game runs joins it", () => {
