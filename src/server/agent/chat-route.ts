@@ -1,11 +1,11 @@
 import { zValidator } from "@hono/zod-validator";
-import { createUIMessageStream, createUIMessageStreamResponse, type UIMessage } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse, type UIMessage, type UIMessageChunk } from "ai";
 import { Hono } from "hono";
 import { z } from "zod";
 import { appendMessages, deleteConversation, getOrCreateConversation, listConversations, loadMessages, saveSessionId } from "../services/support/chat-store";
-import { emitChanged } from "../events";
+import { emitChanged, emitChat } from "../events";
 import { getSettings } from "../services/support/settings";
-import { follow, isBusy, liveRun, startRun, stopRun } from "./runtime/live-run";
+import { follow, isBusy, liveRun, queueRun, stopRuns } from "./runtime/live-run";
 import { runTurn } from "./runtime/providers";
 import type { RunInput } from "./runtime/run";
 
@@ -35,48 +35,56 @@ export const chatRoute = new Hono()
     const { conversationId, messages } = c.req.valid("json");
     const userMessage = messages.at(-1)!;
     if (userMessage.role !== "user") return c.json({ error: "Message invalide" }, 400);
-    if (isBusy()) return c.json({ error: "L'assistant est occupé, réessayez dans un instant." }, 409);
 
-    const conversation = getOrCreateConversation(conversationId);
-    const history = loadMessages(conversation.id);
-    appendMessages(conversation.id, [withoutImageData(userMessage)]);
+    const { id } = getOrCreateConversation(conversationId);
+    // the client learns the conversation and whether it waits in line before the turn starts
+    const queued: UIMessageChunk = { type: "data-conversation", data: { id, queued: isBusy() }, transient: true };
     // the run outlives this request: the response only follows it, and so can a later reconnection
-    const run = startRun(conversation.id, (signal) =>
-      createUIMessageStream({
-        originalMessages: [userMessage],
-        execute: async ({ writer }) => {
-          try {
-            writer.write({ type: "data-conversation", data: { id: conversation.id }, transient: true });
-            writer.write({ type: "start" });
-            const turn = runTurn({
-              assistant: getSettings().assistant,
-              input: { ...toRunInput(userMessage), signal },
-              storedSession: conversation.sessionId,
-              history,
-              saveSession: (id) => saveSessionId(conversation.id, id),
-            });
-            for await (const chunk of turn) {
-              writer.write(chunk);
-              // the tools write outside the HTTP routes: tell the other browsers after each one
-              if (chunk.type === "tool-output-available") emitChanged();
+    const run = queueRun(
+      id,
+      (signal) =>
+        createUIMessageStream({
+          originalMessages: [userMessage],
+          execute: async ({ writer }) => {
+            try {
+              // read and stored only now: a turn that waited must see the turns that ran before it
+              const history = loadMessages(id);
+              appendMessages(id, [withoutImageData(userMessage)]);
+              emitChat(id, "start");
+              writer.write({ type: "data-conversation", data: { id, queued: false }, transient: true });
+              writer.write({ type: "start" });
+              const turn = runTurn({
+                assistant: getSettings().assistant,
+                input: { ...toRunInput(userMessage), signal },
+                storedSession: getOrCreateConversation(id).sessionId, // the previous turn may have saved one meanwhile
+                history,
+                saveSession: (sessionId) => saveSessionId(id, sessionId),
+              });
+              for await (const chunk of turn) {
+                writer.write(chunk);
+                // the tools write outside the HTTP routes: tell the other browsers after each one
+                if (chunk.type === "tool-output-available") emitChanged();
+              }
+              writer.write({ type: "finish" });
+            } catch (e) {
+              if (!signal.aborted) {
+                console.error(e);
+                writer.write({ type: "error", errorText: "L'assistant n'a pas pu répondre, réessayez." });
+              }
             }
-            writer.write({ type: "finish" });
-          } catch (e) {
-            if (!signal.aborted) {
-              console.error(e);
-              writer.write({ type: "error", errorText: "L'assistant n'a pas pu répondre, réessayez." });
-            }
-          }
-        },
-        onFinish: ({ responseMessage }) => {
-          if (responseMessage.parts.length) appendMessages(conversation.id, [responseMessage]);
-        },
-      }),
+          },
+          onFinish: ({ responseMessage }) => {
+            if (responseMessage.parts.length) appendMessages(id, [responseMessage]);
+            emitChat(id, "end");
+          },
+        }),
+      [queued],
     );
     return createUIMessageStreamResponse({ stream: follow(run) });
   })
-  .post("/stop", (c) => {
-    stopRun();
+  /** Stops this conversation's turn, running or waiting in line. */
+  .post("/:conversationId/stop", (c) => {
+    stopRuns(c.req.param("conversationId"));
     return c.body(null, 204);
   })
   /** The turn in progress for this conversation, replayed from its start; 204 when there is none. */
