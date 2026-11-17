@@ -174,7 +174,7 @@ export const appTools = [
     z.object({ days: DAYS }),
     ({ days }) => getShoppingList(days),
   ),
-  define("add_shopping_item", "Ajoute un article libre à la liste de courses (ex. « Café ») ; il y reste jusqu'à ce qu'on le retire.", shoppingExtraInputSchema, addShoppingExtra),
+  define("add_shopping_item", "Ajoute un article libre à la liste de courses (ex. « Café ») dans son rayon (aisle) ; il y reste jusqu'à ce qu'on le retire.", shoppingExtraInputSchema.required({ aisle: true }), addShoppingExtra),
   define(
     "check_shopping_item",
     "Coche ou décoche une ligne de la liste de courses : un ingrédient (ingredientId) ou un ajout manuel (extraId). Cocher un ingrédient signifie « acheté pour les `days` prochains jours ».",

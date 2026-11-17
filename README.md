@@ -31,7 +31,7 @@ The interface and all content are in French. It is built for one family running 
 - **Search**: by meal name or ingredient, with ingredient exclusion ("with chicken but without rice").
 - **Household preferences**: free-text notes that the assistant takes into account.
 - **Live updates**: changes appear on the household's other devices through server-sent events (SSE).
-- **PWA**: installable from the browser to the home screen. There is no offline mode, except that shopping-list ticks and additions made without signal are queued and sent when the network returns (as long as the page stays open).
+- **PWA**: installable from the browser to the home screen. Offline, the app still opens (service worker `public/sw.js`, production build only) and the shopping list works: the last list loaded is kept on the device, and ticks and additions made without signal are queued, kept across reloads, and sent when the network returns. The other tabs need the network.
 - **Assistant**: a chat that creates and edits meals, recipes and ingredients, plans slots, draws, builds shopping lists and searches the web. It runs on Claude (Claude Agent SDK) or Codex, chosen in the app. It accepts up to 6 photos per message. Runs are owned by the server and continue if the phone leaves. Conversation history is shared across devices.
 
 ## Requirements

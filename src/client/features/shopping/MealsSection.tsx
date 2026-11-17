@@ -12,14 +12,18 @@ interface MealsSectionProps {
   onToggle: (meal: ShoppingMeal, excluded: boolean) => void;
 }
 
-/** The meals the list is computed from, folded by default. A switch per meal: off = left out of the list (eating out, already in stock...). */
+/**
+ * The planned meals and whether each counts in the list. A newly planned meal starts out of the list: it is put in by hand
+ * with its switch. Folded by default, open while none counts yet (otherwise the list would look empty for no reason).
+ */
 export function MealsSection({ meals, onToggle }: MealsSectionProps) {
   if (!meals.length) return null;
   const withRecipe = meals.filter((m) => !m.empty);
+  const counted = withRecipe.filter((m) => !m.excluded).length;
   return (
-    <Collapsible>
+    <Collapsible defaultOpen={counted === 0}>
       <CollapsibleTrigger className="group micro-label ml-0.5 flex items-center gap-1 outline-none hover:text-foreground focus-visible:text-foreground">
-        Repas pris en compte · {withRecipe.filter((m) => !m.excluded).length} / {withRecipe.length}
+        Repas pris en compte · {counted} / {withRecipe.length}
         <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent>

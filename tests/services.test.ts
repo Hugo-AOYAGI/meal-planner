@@ -55,8 +55,10 @@ test("meals, recipes, plan, draw and shopping work together", () => {
   expect(new Set(used).size).toBe(used.length);
   redrawSlot(addDays(monday, 1), "soir");
 
-  const list = getShoppingList(14); // from today: reaches next Monday
-  expect(list).toMatchObject({ from: today(), to: addDays(today(), 13) });
+  const fresh = getShoppingList(14); // from today: reaches next Monday
+  expect(fresh).toMatchObject({ from: today(), to: addDays(today(), 13), aisles: [] }); // newly planned meals start out of the list
+  for (const m of fresh.meals) setShoppingExclusion({ days: 14, entryId: m.entryId, excluded: false });
+  const list = getShoppingList(14);
   expect(list.aisles[0]!.items[0]).toMatchObject({ name: "Riz", totalGrams: 200, meals: ["Dahl"] });
   expect(list.meals.some((m) => m.empty)).toBe(true); // the drawn meals have no recipe
   const dahlEntry = list.meals.find((m) => m.name === "Dahl")!;
@@ -69,7 +71,8 @@ test("meals, recipes, plan, draw and shopping work together", () => {
   expect(setShoppingExclusion({ days: 14, entryId: back.entryId, excluded: false }).aisles[0]!.items[0]).toMatchObject({ name: "Riz" });
   expect(setShoppingCheck({ days: 14, ingredientId: riz.id, checked: true }).aisles[0]!.items[0]!.checked).toBe(true);
   expect(setShoppingCheck({ days: 14, ingredientId: riz.id, checked: false }).aisles[0]!.items[0]!.checked).toBe(false);
-  expect(addShoppingExtra({ label: "Piles" })).toHaveLength(1);
+  expect(addShoppingExtra({ label: "Piles" })).toEqual([expect.objectContaining({ label: "Piles", aisle: null })]); // left for the assistant
+  expect(addShoppingExtra({ label: "riz" }).at(-1)!.aisle).toBe("epicerie"); // named like an ingredient
 
   expect(getMeal(dahl.id).timesCooked).toBe(0); // future entries do not count
   expect(listMeals({ q: "dahl" })).toHaveLength(1);

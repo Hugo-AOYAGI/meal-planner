@@ -4,8 +4,14 @@ import { createRoot } from "react-dom/client";
 import { App } from "@/App";
 import { Toaster } from "@/components/ui/feedback/sonner";
 import { TooltipProvider } from "@/components/ui/overlays/tooltip";
+import { persistOffline } from "@/lib/api/persist";
 import { queryClient } from "@/lib/api/query";
 import "@/index.css";
+
+// the shopping list and its pending ticks survive a reload without network (see use-shopping)
+persistOffline(queryClient, ["shopping"]);
+// opens the app without network; not in dev, where Vite serves changing files
+if (import.meta.env.PROD && "serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

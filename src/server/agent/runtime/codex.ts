@@ -8,7 +8,7 @@ import { toolOutput } from "../bridge";
 import { systemPrompt } from "../prompt";
 import { agentDir, type RunInput } from "./run";
 
-const MODEL = process.env.MEAL_PLANNER_CODEX_MODEL ?? "gpt-6.1-terra";
+export const CODEX_MODEL = process.env.MEAL_PLANNER_CODEX_MODEL ?? "gpt-6.1-terra";
 
 /**
  * Codex runs as its own process: it reaches the app tools through the stdio MCP server, pre-approved.
@@ -123,7 +123,7 @@ export async function* runCodex(
   onSession: (id: string) => void,
 ): AsyncGenerator<UIMessageChunk> {
   const options = {
-    model: MODEL,
+    model: CODEX_MODEL,
     modelReasoningEffort: "medium",
     sandboxMode: "read-only",
     approvalPolicy: "never",

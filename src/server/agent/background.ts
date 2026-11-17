@@ -3,10 +3,12 @@ import { isNull } from "drizzle-orm";
 import { db } from "../db";
 import { recipe } from "../db/schema";
 import { emitChanged } from "../events";
+import { AISLE_LABELS, AISLES } from "@shared/constants";
 import { listMeals } from "../services/catalog/meals";
+import { sortExtras, unsortedExtras } from "../services/planning/shopping";
 import { getSettings } from "../services/support/settings";
 import { isBusy, startRun } from "./runtime/live-run";
-import { runTurn } from "./runtime/providers";
+import { askOnce, runTurn } from "./runtime/providers";
 
 /** The draw's "Nouveau" card wants this many assistant ideas in stock. */
 const IDEAS_STOCK = 3;
@@ -82,9 +84,42 @@ export async function runBackgroundJobs(): Promise<void> {
   }
 }
 
+let sorting = false;
+
+/**
+ * Sorts the hand-added shopping lines the ingredients could not place: one short question to the assistant, outside the
+ * chat's run slot (it is quick and writes nothing else). Lines added meanwhile are sorted by the next pass; on failure
+ * they stay unsorted until the next line added or the next start.
+ */
+export async function classifyExtras(ask = (prompt: string) => askOnce(getSettings().assistant, prompt)): Promise<void> {
+  if (sorting) return;
+  sorting = true;
+  try {
+    const tried = new Set<number>();
+    for (let todo = unsortedExtras(); todo.length; todo = unsortedExtras().filter((e) => !tried.has(e.id))) {
+      todo.forEach((e) => tried.add(e.id));
+      const aisles = AISLES.map((a) => `- ${a} : ${AISLE_LABELS[a]}`).join("\n");
+      const lines = todo.map((e) => `- ${e.id} : ${e.label}`).join("\n");
+      const answer = await ask(
+        `Range chaque article de liste de courses dans le rayon d'un supermarché français où on le trouve.\n\nRayons :\n${aisles}\n\nArticles (id : libellé) :\n${lines}\n\nRéponds uniquement par un objet JSON {"<id>": "<rayon>"} avec un code de rayon de la liste, "autre" si aucun ne va.`,
+      );
+      const json = answer.match(/\{[\s\S]*\}/)?.[0];
+      if (!json) throw new Error(`classifyExtras: no JSON in ${answer.slice(0, 200)}`);
+      const parsed = JSON.parse(json) as Record<string, unknown>;
+      sortExtras(Object.fromEntries(todo.map((e) => [e.id, String(parsed[e.id] ?? "autre")])));
+      emitChanged();
+    }
+  } catch (e) {
+    console.error("classifyExtras failed", e);
+  } finally {
+    sorting = false;
+  }
+}
+
 /** Runs the jobs a few minutes after start, then every night at 03:30 (after the backup). */
 export function scheduleBackgroundJobs(): void {
   setTimeout(() => void runBackgroundJobs(), STARTUP_DELAY_MS).unref();
+  setTimeout(() => void classifyExtras(), 10_000).unref(); // lines added while the assistant could not sort them
   const next = new Date();
   next.setHours(3, 30, 0, 0);
   if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);

@@ -131,6 +131,8 @@ export const shoppingExtraSchema = z.object({
   id: idSchema,
   label: z.string(),
   checked: z.boolean(),
+  /** the aisle it is listed in; null while the assistant sorts it */
+  aisle: aisleSchema.nullable(),
 });
 export type ShoppingExtra = z.infer<typeof shoppingExtraSchema>;
 
@@ -177,6 +179,8 @@ export const shoppingCheckInputSchema = z.object({
 export type ShoppingCheckInput = z.infer<typeof shoppingCheckInputSchema>;
 export const shoppingExtraInputSchema = z.object({
   label: z.string().trim().min(1).max(120),
+  /** when known; otherwise guessed from the ingredients, or sorted by the assistant in the background */
+  aisle: aisleSchema.optional(),
 });
 export type ShoppingExtraInput = z.infer<typeof shoppingExtraInputSchema>;
 export const shoppingExtraUpdateSchema = z.object({

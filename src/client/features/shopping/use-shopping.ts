@@ -2,7 +2,7 @@ import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/
 import { useState } from "react";
 import type { ShoppingList } from "@shared/schemas";
 import { api, unwrap } from "@/lib/api/api";
-import { keys } from "@/lib/api/query";
+import { keys, queryClient } from "@/lib/api/query";
 
 /** The periods offered, in days from today. */
 export const PERIODS = [3, 7, 14] as const;
@@ -49,71 +49,94 @@ export function useShoppingList(days: number) {
     queryKey: keys.shopping.days(days),
     queryFn: () => unwrap(api.shopping.$get({ query: { days: String(days) } })),
     staleTime: 0,
+    gcTime: Infinity, // kept, and saved on the device, even while another tab is shown
     networkMode: "always",
     meta: { silent: true },
     refetchInterval: pending ? false : 5_000,
   });
 }
 
-/**
- * Shopping write: `optimistic` patches the cached list at once; what the server answers (the list, or its extras)
- * replaces it, and a failure restores the previous one. A lost connection is not a failure: the write is retried
- * until the network is back (writes go one at a time, in order), so ticking in a shop without signal still works.
- */
-function useListMutation<V>(days: number, run: (v: V) => Promise<Partial<ShoppingList>>, optimistic?: (list: ShoppingList, v: V) => ShoppingList) {
-  const qc = useQueryClient();
-  const key = keys.shopping.days(days);
-  return useMutation({
-    mutationKey: MUTATION_KEY,
-    scope: { id: "shopping" },
-    networkMode: "offlineFirst",
-    retry: (_count, error) => error instanceof TypeError,
-    mutationFn: run,
-    onMutate: async (v: V) => {
-      await qc.cancelQueries({ queryKey: key });
-      const previous = qc.getQueryData<ShoppingList>(key);
-      if (previous && optimistic) qc.setQueryData(key, optimistic(previous, v));
-      return { previous };
-    },
-    onError: (_e, _v, ctx) => ctx?.previous && qc.setQueryData(key, ctx.previous),
-    onSuccess: (fresh) => qc.setQueryData<ShoppingList>(key, (list) => list && { ...list, ...fresh }),
-  });
+/** One write to the list. Plain data, so a write still waiting for the network survives a reload (see `persistOffline`). */
+export type ShoppingWrite =
+  | { type: "check"; days: number; ingredientId: number; checked: boolean }
+  | { type: "exclude"; days: number; entryId: number; excluded: boolean }
+  | { type: "add"; label: string }
+  | { type: "checkExtra"; id: number; checked: boolean }
+  | { type: "removeExtra"; id: number };
+
+/** Sends a write; the server answers with the list of its period, or with the hand-added lines. */
+function send(w: ShoppingWrite): Promise<Partial<ShoppingList>> {
+  const extras = (list: Promise<ShoppingList["extras"]>) => list.then((extras) => ({ extras }));
+  switch (w.type) {
+    case "check":
+      return unwrap(api.shopping.check.$put({ json: { days: w.days, ingredientId: w.ingredientId, checked: w.checked } }));
+    case "exclude":
+      return unwrap(api.shopping.exclude.$put({ json: { days: w.days, entryId: w.entryId, excluded: w.excluded } }));
+    case "add":
+      return extras(unwrap(api.shopping.extras.$post({ json: { label: w.label } })));
+    case "checkExtra":
+      return extras(unwrap(api.shopping.extras[":id"].$patch({ param: { id: String(w.id) }, json: { checked: w.checked } })));
+    case "removeExtra":
+      return extras(unwrap(api.shopping.extras[":id"].$delete({ param: { id: String(w.id) } })));
+  }
 }
 
+/** What the list looks like once the write is through, shown at once (also offline). */
+function optimistic(list: ShoppingList, w: ShoppingWrite): ShoppingList {
+  switch (w.type) {
+    case "check":
+      return {
+        ...list,
+        aisles: list.aisles.map((a) => ({ ...a, items: a.items.map((i) => (i.ingredientId === w.ingredientId ? { ...i, checked: w.checked } : i)) })),
+      };
+    case "exclude":
+      return { ...list, meals: list.meals.map((m) => (m.entryId === w.entryId ? { ...m, excluded: w.excluded } : m)) };
+    case "add": // unsorted until the server files it in its aisle; a negative id until it is saved
+      return { ...list, extras: [...list.extras, { id: -Date.now(), label: w.label, checked: false, aisle: null }] };
+    case "checkExtra":
+      return { ...list, extras: list.extras.map((e) => (e.id === w.id ? { ...e, checked: w.checked } : e)) };
+    case "removeExtra":
+      return { ...list, extras: list.extras.filter((e) => e.id !== w.id) };
+  }
+}
+
+/**
+ * How every shopping write runs, also one restored after a reload: one at a time, in order; a lost connection is not
+ * a failure, the write waits for the network (so ticking in a shop without signal works); the answer goes in the cache.
+ */
+queryClient.setMutationDefaults(MUTATION_KEY, {
+  mutationFn: (w: ShoppingWrite) => send(w),
+  scope: { id: "shopping" },
+  networkMode: "offlineFirst",
+  retry: (_count: number, error: Error) => error instanceof TypeError,
+  onSuccess: (fresh: Partial<ShoppingList>, w: ShoppingWrite) => {
+    const lists = { queryKey: keys.shopping.all };
+    if ("days" in w) queryClient.setQueryData<ShoppingList>(keys.shopping.days(w.days), (list) => list && { ...list, ...fresh });
+    if (fresh.extras) queryClient.setQueriesData<ShoppingList>(lists, (list) => list && { ...list, extras: fresh.extras! });
+    // the other periods catch up when shown (no refetch now: it would undo the writes still waiting)
+    void queryClient.invalidateQueries({ ...lists, refetchType: "none" });
+    if (w.type === "exclude") void queryClient.invalidateQueries({ queryKey: keys.plan.all });
+  },
+});
+
+/** The list's writes: each shows at once in every cached period, and a refused one restores them. */
 export function useShoppingActions(days: number) {
   const qc = useQueryClient();
-  const extras = (list: Promise<ShoppingList["extras"]>) => list.then((extras) => ({ extras }));
+  const { mutate } = useMutation<Partial<ShoppingList>, Error, ShoppingWrite, [readonly unknown[], ShoppingList | undefined][]>({
+    mutationKey: MUTATION_KEY,
+    onMutate: async (w) => {
+      await qc.cancelQueries({ queryKey: keys.shopping.all });
+      const previous = qc.getQueriesData<ShoppingList>({ queryKey: keys.shopping.all });
+      qc.setQueriesData<ShoppingList>({ queryKey: keys.shopping.all }, (list) => list && optimistic(list, w));
+      return previous;
+    },
+    onError: (_e, _w, previous) => previous?.forEach(([key, list]) => qc.setQueryData(key, list)),
+  });
   return {
-    checkItem: useListMutation(
-      days,
-      (v: { ingredientId: number; checked: boolean }) => unwrap(api.shopping.check.$put({ json: { days, ...v } })),
-      (list, v) => ({
-        ...list,
-        aisles: list.aisles.map((a) => ({
-          ...a,
-          items: a.items.map((i) => (i.ingredientId === v.ingredientId ? { ...i, checked: v.checked } : i)),
-        })),
-      }),
-    ),
-    excludeMeal: useListMutation(
-      days,
-      (v: { entryId: number; excluded: boolean }) =>
-        unwrap(api.shopping.exclude.$put({ json: { days, ...v } })).then((list) => {
-          void qc.invalidateQueries({ queryKey: keys.plan.all }); // the Semaine tab shows the mark
-          return list;
-        }),
-      (list, v) => ({ ...list, meals: list.meals.map((m) => (m.entryId === v.entryId ? { ...m, excluded: v.excluded } : m)) }),
-    ),
-    addExtra: useListMutation(days, (label: string) => extras(unwrap(api.shopping.extras.$post({ json: { label } })))),
-    checkExtra: useListMutation(
-      days,
-      (v: { id: number; checked: boolean }) => extras(unwrap(api.shopping.extras[":id"].$patch({ param: { id: String(v.id) }, json: { checked: v.checked } }))),
-      (list, v) => ({ ...list, extras: list.extras.map((e) => (e.id === v.id ? { ...e, checked: v.checked } : e)) }),
-    ),
-    removeExtra: useListMutation(
-      days,
-      (id: number) => extras(unwrap(api.shopping.extras[":id"].$delete({ param: { id: String(id) } }))),
-      (list, id) => ({ ...list, extras: list.extras.filter((e) => e.id !== id) }),
-    ),
+    checkItem: (v: { ingredientId: number; checked: boolean }) => mutate({ type: "check", days, ...v }),
+    excludeMeal: (v: { entryId: number; excluded: boolean }) => mutate({ type: "exclude", days, ...v }),
+    addExtra: (label: string) => mutate({ type: "add", label }),
+    checkExtra: (v: { id: number; checked: boolean }) => mutate({ type: "checkExtra", ...v }),
+    removeExtra: (id: number) => mutate({ type: "removeExtra", id }),
   };
 }

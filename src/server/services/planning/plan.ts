@@ -115,13 +115,14 @@ export function applySlot({ date, moment, servings, entries }: SetSlotInput): vo
       tx.update(planSlot).set({ servings }).where(eq(planSlot.id, existing.id)).run();
     }
     if (resolved) {
-      // entries are rewritten, so a meal left out of the shopping list stays out as long as it stays in the slot
-      const left = tx.select({ mealId: planEntry.mealId }).from(planEntry).where(and(eq(planEntry.slotId, slotId!), eq(planEntry.excluded, true))).all().map((r) => r.mealId);
+      // entries are rewritten: a meal that stays in the slot keeps its shopping choice; a new one starts out of the list
+      // (it is put in the list by hand, see `setShoppingExclusion`)
+      const kept = tx.select({ mealId: planEntry.mealId, excluded: planEntry.excluded }).from(planEntry).where(eq(planEntry.slotId, slotId!)).all();
       tx.delete(planEntry).where(eq(planEntry.slotId, slotId!)).run();
       const values = resolved.map((r) => {
-        const i = left.indexOf(r.mealId);
-        if (i >= 0) left.splice(i, 1);
-        return { ...r, slotId: slotId!, excluded: i >= 0 };
+        const i = kept.findIndex((k) => k.mealId === r.mealId);
+        const excluded = i >= 0 ? kept.splice(i, 1)[0]!.excluded : true;
+        return { ...r, slotId: slotId!, excluded };
       });
       if (values.length) tx.insert(planEntry).values(values).run();
     }
