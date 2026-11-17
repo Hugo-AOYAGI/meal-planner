@@ -1,12 +1,14 @@
 import * as React from "react"
+import { useBackDismiss } from "@/lib/hooks/use-back"
 import { cn } from "cn"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/actions/button"
 import { XIcon } from "lucide-react"
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+/** `back={false}`: the back action does not close it (something else owns that entry, see MealsPage). */
+function Sheet({ open, defaultOpen, onOpenChange, back = true, ...props }: React.ComponentProps<typeof SheetPrimitive.Root> & { back?: boolean }) {
+  return <SheetPrimitive.Root data-slot="sheet" {...useBackDismiss({ open, defaultOpen, onOpenChange }, back)} {...props} />
 }
 
 function SheetTrigger({

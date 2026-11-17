@@ -1,15 +1,19 @@
 "use client"
 
 import * as React from "react"
+import { useBackDismiss } from "@/lib/hooks/use-back"
 import { cn } from "cn"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/actions/button"
 
 function AlertDialog({
+  open,
+  defaultOpen,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...useBackDismiss({ open, defaultOpen, onOpenChange })} {...props} />
 }
 
 function AlertDialogTrigger({

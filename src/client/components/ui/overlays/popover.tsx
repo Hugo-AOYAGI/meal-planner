@@ -1,11 +1,15 @@
 import * as React from "react"
+import { useBackDismiss } from "@/lib/hooks/use-back"
 import { cn } from "cn"
 import { Popover as PopoverPrimitive } from "radix-ui"
 
 function Popover({
+  open,
+  defaultOpen,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+  return <PopoverPrimitive.Root data-slot="popover" {...useBackDismiss({ open, defaultOpen, onOpenChange })} {...props} />
 }
 
 function PopoverTrigger({

@@ -1,5 +1,6 @@
 import { HistoryIcon, MessageSquareIcon, Undo2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
+import { useBackLayer } from "@/lib/hooks/use-back";
 import { Button } from "@/components/ui/actions/button";
 import { AssistantPicker } from "@/features/chat/composer/AssistantPicker";
 import { ChatInput } from "@/features/chat/composer/ChatInput";
@@ -11,6 +12,7 @@ import { useChatSession } from "@/features/chat/session/use-chat-session";
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const { messages, status, busy, queued, error, conversationId, resumable, send, stop, reset, open } = useChatSession();
   const [history, setHistory] = useState(false);
+  useBackLayer(history, () => setHistory(false)); // back from the history list: to the conversation
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-background">
       <header className="flex h-13 shrink-0 items-center justify-between pr-1 pl-3.5">

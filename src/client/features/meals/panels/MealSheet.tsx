@@ -10,12 +10,14 @@ interface MealSheetProps {
   servings?: number;
   onSelect: (id: number) => void;
   onClose: () => void;
+  /** false: the back action does not close it here (a link's history entry does, see MealsPage) */
+  back?: boolean;
 }
 
 /** A meal in a bottom sheet, over whatever page it was opened from. */
-export function MealSheet({ selected, recipeId, servings, onSelect, onClose }: MealSheetProps) {
+export function MealSheet({ selected, recipeId, servings, onSelect, onClose, back = true }: MealSheetProps) {
   return (
-    <Sheet open={selected !== null} onOpenChange={(open) => !open && onClose()}>
+    <Sheet open={selected !== null} onOpenChange={(open) => !open && onClose()} back={back}>
       <SheetContent
         side="bottom"
         showCloseButton={false}
