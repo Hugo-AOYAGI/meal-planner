@@ -10,6 +10,7 @@ import { useLiveUpdates } from "@/lib/hooks/use-live-updates";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { useTabSwipe } from "@/lib/hooks/use-tab-swipe";
 import { cn } from "@/lib/formatting/utils";
+import { FLOATING_ROW } from "@/components/layout/floating";
 
 const TABS = [
   { id: "planning", label: "Planning", page: PlanningPage },
@@ -53,15 +54,22 @@ function TabNav({
   );
 }
 
-/** The app's main call to action: the one button in tomato, floating in the bottom corner of the page. */
+/**
+ * The app's main call to action: the one button in tomato, floating in the bottom corner of the page, on the line the
+ * Planning's "Aujourd'hui" button shares (see `FLOATING_ROW`). Too narrow for both: only its icon.
+ */
 function AssistantButton({ onClick }: { onClick: () => void }) {
   return (
     <Button
-      className="absolute right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 h-13 gap-2 rounded-full bg-[var(--tomato)] px-5 text-base text-foreground shadow-panel hover:bg-[var(--tomato)] hover:brightness-95 md:right-6 md:bottom-6"
+      aria-label="Assistant"
+      className={cn(
+        FLOATING_ROW,
+        "right-4 z-30 h-13 max-md:h-13 gap-2 rounded-full bg-[var(--tomato)] px-5 text-base text-foreground shadow-panel hover:bg-[var(--tomato)] hover:brightness-95 max-[359px]:w-13 max-[359px]:px-0 md:right-6",
+      )}
       onClick={onClick}
     >
       <MessageCircle className="size-[18px]" />
-      Assistant
+      <span className="max-[359px]:sr-only">Assistant</span>
     </Button>
   );
 }
