@@ -1,9 +1,11 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useRef } from "react";
 import { today } from "@shared/dates";
+import { FLOATING_ROW } from "@/components/layout/floating";
 import { Toolbar } from "@/components/layout/Toolbar";
 import { Skeleton } from "@/components/ui/feedback/skeleton";
 import { fullDayLabel } from "@/lib/formatting/format";
+import { cn } from "@/lib/formatting/utils";
 import { DayGrid } from "@/features/week/days/DayGrid";
 import { PreviousDays } from "@/features/week/days/PreviousDays";
 import { usePlanScroll } from "@/features/week/days/use-plan-days";
@@ -41,19 +43,19 @@ export function PlanningPage() {
       {plan.hasPreviousPage && <PreviousDays load={plan.fetchPreviousPage} disabled={plan.isFetchingPreviousPage} />}
       {plan.slots ? <DayGrid slots={plan.slots} /> : <Skeleton className="h-[32rem] w-full md:h-80" />}
       {plan.hasNextPage && <Skeleton ref={plan.sentinel} className="mt-5 h-40 w-full" />}
-      {/* last child, so that it sticks to the bottom of the scroll area while the list is above it */}
-      <div className="pointer-events-none sticky bottom-4 z-20 h-0">
-        {jump.place !== "here" && (
-          <button
-            type="button"
-            onClick={jump.goToToday}
-            className="pointer-events-auto absolute bottom-0 left-0 flex h-11 items-center gap-2 rounded-full bg-[var(--sun)] px-4 text-sm font-bold shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            {jump.place === "above" ? <ArrowUp className="size-4" /> : <ArrowDown className="size-4" />}
-            Aujourd’hui
-          </button>
-        )}
-      </div>
+      {jump.place !== "here" && (
+        <button
+          type="button"
+          onClick={jump.goToToday}
+          className={cn(
+            FLOATING_ROW,
+            "left-4 z-30 flex h-13 items-center gap-2 rounded-full bg-[var(--sun)] px-5 text-base font-bold shadow-panel outline-none focus-visible:ring-2 focus-visible:ring-brand md:left-6",
+          )}
+        >
+          {jump.place === "above" ? <ArrowUp className="size-[18px]" /> : <ArrowDown className="size-[18px]" />}
+          Aujourd’hui
+        </button>
+      )}
     </div>
   );
 }
