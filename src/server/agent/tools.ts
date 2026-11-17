@@ -32,7 +32,7 @@ import { addPreference, removePreference } from "../services/catalog/preferences
 import { createMeal, deleteMeal, getMeal, listMeals, updateMeal } from "../services/catalog/meals";
 import { getDays, getWeek, setSlot } from "../services/planning/plan";
 import { createRecipe, deleteRecipe, getRecipe, setDefaultRecipe, updateRecipe } from "../services/catalog/recipes";
-import { addShoppingExtra, getShoppingList, setShoppingCheck, updateShoppingExtra } from "../services/planning/shopping";
+import { addShoppingExtra, deleteShoppingExtra, getShoppingList, setShoppingCheck, setShoppingExclusion, updateShoppingExtra } from "../services/planning/shopping";
 
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
 
@@ -170,7 +170,7 @@ export const appTools = [
   ),
   define(
     "get_shopping_list",
-    "La liste de courses des prochains jours, à partir d'aujourd'hui : ingrédients par rayon (quantités restant à acheter, repas d'origine, coché ou non), ajouts manuels, et `uncounted`, les repas planifiés non comptés faute de recette.",
+    "La liste de courses des prochains jours, à partir d'aujourd'hui : ingrédients par rayon (quantités restant à acheter, repas d'origine, coché ou non), ajouts manuels, et `meals`, tous les repas planifiés de la période (entryId, date, moment, excluded = laissé hors liste, empty = sans recette donc sans effet sur la liste).",
     z.object({ days: DAYS }),
     ({ days }) => getShoppingList(days),
   ),
@@ -186,6 +186,19 @@ export const appTools = [
       return { checked };
     },
   ),
+  define(
+    "exclude_meal_from_shopping",
+    "Laisse un repas planifié hors de la liste de courses (il dîne dehors, il reste des restes, les ingrédients sont déjà à la maison), ou le remet dedans. entryId vient de `meals` (get_shopping_list) ou des entrées de get_days_plan.",
+    z.object({ days: DAYS, entryId: idSchema, excluded: z.boolean() }),
+    ({ entryId, excluded, days }) => {
+      setShoppingExclusion({ days, entryId, excluded });
+      return { entryId, excluded };
+    },
+  ),
+  define("remove_shopping_item", "Retire un ajout manuel de la liste de courses (extraId, voir `extras`). Sur demande de l'utilisateur.", z.object({ extraId: idSchema }), ({ extraId }) => {
+    deleteShoppingExtra(extraId);
+    return { removed: extraId };
+  }),
   define(
     "get_history",
     "Les repas mangés entre deux dates (incluses), du plus fréquent au moins fréquent, avec le nombre de fois et la dernière date.",

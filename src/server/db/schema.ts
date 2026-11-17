@@ -99,6 +99,8 @@ export const planEntry = sqliteTable(
     mealId: integer("meal_id").notNull().references(() => meal.id, { onDelete: "cascade" }),
     recipeId: integer("recipe_id").references(() => recipe.id, { onDelete: "set null" }),
     position: integer("position").notNull().default(0),
+    /** left out of the shopping list (eaten out, already in stock...); `applySlot` carries it over when a slot is rewritten */
+    excluded: integer("excluded", { mode: "boolean" }).notNull().default(false),
   },
   (t) => [index("plan_entry_slot").on(t.slotId), index("plan_entry_meal").on(t.mealId)],
 );

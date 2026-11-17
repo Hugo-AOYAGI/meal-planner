@@ -1,0 +1,1 @@
+ALTER TABLE `plan_entry` ADD `excluded` integer DEFAULT false NOT NULL;

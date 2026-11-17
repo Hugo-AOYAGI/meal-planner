@@ -6,7 +6,7 @@ import { createMeal, getMeal, listMeals } from "@server/services/catalog/meals";
 import { addPreference, listPreferences, removePreference } from "@server/services/catalog/preferences";
 import { getDays, getWeek, setSlot } from "@server/services/planning/plan";
 import { createRecipe, getRecipe, listRecipes, setDefaultRecipe } from "@server/services/catalog/recipes";
-import { addShoppingExtra, getShoppingList, setShoppingCheck } from "@server/services/planning/shopping";
+import { addShoppingExtra, getShoppingList, setShoppingCheck, setShoppingExclusion } from "@server/services/planning/shopping";
 import { getNutritionSummary } from "@server/services/planning/insights";
 
 // DB_PATH=:memory: (see the test script): one fresh in-memory database for this file.
@@ -58,7 +58,15 @@ test("meals, recipes, plan, draw and shopping work together", () => {
   const list = getShoppingList(14); // from today: reaches next Monday
   expect(list).toMatchObject({ from: today(), to: addDays(today(), 13) });
   expect(list.aisles[0]!.items[0]).toMatchObject({ name: "Riz", totalGrams: 200, meals: ["Dahl"] });
-  expect(list.uncounted.length).toBeGreaterThan(0); // the drawn meals have no recipe
+  expect(list.meals.some((m) => m.empty)).toBe(true); // the drawn meals have no recipe
+  const dahlEntry = list.meals.find((m) => m.name === "Dahl")!;
+  const out = setShoppingExclusion({ days: 14, entryId: dahlEntry.entryId, excluded: true });
+  expect(out.aisles.flatMap((a) => a.items).some((i) => i.name === "Riz")).toBe(false);
+  expect(out.meals.find((m) => m.entryId === dahlEntry.entryId)!.excluded).toBe(true);
+  setSlot({ date: dahlEntry.date, moment: dahlEntry.moment, entries: [{ mealId: dahl.id }] }); // rewriting the slot keeps the choice
+  expect(getShoppingList(14).meals.find((m) => m.name === "Dahl")!.excluded).toBe(true);
+  const back = getShoppingList(14).meals.find((m) => m.name === "Dahl")!;
+  expect(setShoppingExclusion({ days: 14, entryId: back.entryId, excluded: false }).aisles[0]!.items[0]).toMatchObject({ name: "Riz" });
   expect(setShoppingCheck({ days: 14, ingredientId: riz.id, checked: true }).aisles[0]!.items[0]!.checked).toBe(true);
   expect(setShoppingCheck({ days: 14, ingredientId: riz.id, checked: false }).aisles[0]!.items[0]!.checked).toBe(false);
   expect(addShoppingExtra({ label: "Piles" })).toHaveLength(1);

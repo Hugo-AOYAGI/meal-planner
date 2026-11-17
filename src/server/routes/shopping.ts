@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   idSchema,
   shoppingCheckInputSchema,
+  shoppingExcludeInputSchema,
   shoppingExtraInputSchema,
   shoppingExtraUpdateSchema,
   shoppingQuerySchema,
@@ -13,6 +14,7 @@ import {
   deleteShoppingExtra,
   getShoppingList,
   setShoppingCheck,
+  setShoppingExclusion,
   updateShoppingExtra,
 } from "../services/planning/shopping";
 
@@ -21,6 +23,7 @@ const idParam = z.object({ id: z.coerce.number().pipe(idSchema) });
 export const shoppingRoute = new Hono()
   .get("/", zValidator("query", shoppingQuerySchema), (c) => c.json(getShoppingList(c.req.valid("query").days)))
   .put("/check", zValidator("json", shoppingCheckInputSchema), (c) => c.json(setShoppingCheck(c.req.valid("json"))))
+  .put("/exclude", zValidator("json", shoppingExcludeInputSchema), (c) => c.json(setShoppingExclusion(c.req.valid("json"))))
   .post("/extras", zValidator("json", shoppingExtraInputSchema), (c) => c.json(addShoppingExtra(c.req.valid("json")), 201))
   .patch("/extras/:id", zValidator("param", idParam), zValidator("json", shoppingExtraUpdateSchema), (c) =>
     c.json(updateShoppingExtra(c.req.valid("param").id, c.req.valid("json"))),
