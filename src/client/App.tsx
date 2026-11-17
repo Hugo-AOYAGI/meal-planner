@@ -96,7 +96,9 @@ export function App() {
             <TabNav current={tab.id} onSelect={setTab} className="flex h-9" />
           </header>
         )}
+        {/* one scroller per tab: a tab opens at its top (Planning then places itself on today), not where the last one was */}
         <main
+          key={tab.id}
           {...swipe}
           className={cn("min-h-0 flex-1 overflow-y-auto px-3.5 pb-24", mobile ? "pt-0" : "px-4 pt-[68px]")}
         >
