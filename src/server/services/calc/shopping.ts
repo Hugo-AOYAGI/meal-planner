@@ -1,4 +1,4 @@
-import type { Aisle } from "@shared/constants";
+import type { Aisle, Moment } from "@shared/constants";
 import { AISLES } from "@shared/constants";
 import { scale } from "@shared/calc/scale";
 import type { ShoppingItem } from "@shared/schemas";
@@ -13,10 +13,16 @@ export interface ShoppingSourceLine {
   grams: number | null;
   baseServings: number;
   slotServings: number;
+  mealId: number;
   mealName: string;
-  /** day the meal is planned on */
+  /** slot the meal is planned in */
   date: string;
+  moment: Moment;
 }
+
+/** What a tick covers: this ingredient for this planned meal. */
+export const boughtKey = (l: { ingredientId: number; date: string; moment: string; mealId: number }) =>
+  `${l.ingredientId}/${l.date}/${l.moment}/${l.mealId}`;
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -50,19 +56,18 @@ function toItem(lines: ShoppingSourceLine[], checked: boolean): ShoppingItem {
 
 /**
  * Groups lines by ingredient, then by aisle (AISLES order, items sorted by name).
- * `bought` maps a ticked ingredient to the last day it is bought for: its lines up to that day need no shopping.
+ * `bought` holds the `boughtKey`s ticked: those lines need no shopping, a meal planned or counted since does.
  * When nothing is left to buy the item is ticked and shows all its lines; otherwise it is unticked and shows only what is left.
  */
 export function aggregateShopping(
   lines: ShoppingSourceLine[],
-  bought: ReadonlyMap<number, string> = new Map(),
+  bought: ReadonlySet<string> = new Set(),
 ): { aisle: Aisle; items: ShoppingItem[] }[] {
   const byIngredient = new Map<number, ShoppingSourceLine[]>();
   for (const l of lines) byIngredient.set(l.ingredientId, [...(byIngredient.get(l.ingredientId) ?? []), l]);
 
-  const items = [...byIngredient].map(([id, all]) => {
-    const until = bought.get(id);
-    const left = until ? all.filter((l) => l.date > until) : all;
+  const items = [...byIngredient].map(([, all]) => {
+    const left = all.filter((l) => !bought.has(boughtKey(l)));
     return left.length ? toItem(left, false) : toItem(all, true);
   });
   return AISLES.flatMap((aisle) => {

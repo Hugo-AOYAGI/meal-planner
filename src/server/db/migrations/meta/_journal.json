@@ -50,6 +50,20 @@
       "when": 1794933351430,
       "tag": "0006_long_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794934768344,
+      "tag": "0007_strange_tyger_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794934775106,
+      "tag": "0008_yummy_apocalypse",
+      "breakpoints": true
     }
   ]
 }

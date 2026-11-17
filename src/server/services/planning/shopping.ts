@@ -1,19 +1,16 @@
-import { asc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt } from "drizzle-orm";
 import { AISLES, type Aisle } from "@shared/constants";
 import { normalize } from "@shared/text";
-import { addDays, daysFrom, today } from "@shared/dates";
+import { daysFrom, today } from "@shared/dates";
 import type { ShoppingCheckInput, ShoppingExcludeInput, ShoppingExtra, ShoppingExtraInput, ShoppingExtraUpdate, ShoppingList } from "@shared/schemas";
 import { db } from "../../db";
-import { ingredient, meal, planEntry, planSlot, shoppingCheck, shoppingExtra } from "../../db/schema";
-import { aggregateShopping, type ShoppingSourceLine } from "../calc/shopping";
+import { ingredient, meal, planEntry, planSlot, shoppingBought, shoppingExtra } from "../../db/schema";
+import { aggregateShopping, boughtKey, type ShoppingSourceLine } from "../calc/shopping";
 import { notFound } from "../support/errors";
 import { getRecipes } from "../catalog/recipes";
 
-/** Last day of the list covering `days` days from today. */
-const lastDay = (days: number) => addDays(today(), days - 1);
-
-/** What to buy for the meals planned over `days` days starting today, plus the lines added by hand. */
-export function getShoppingList(days: number): ShoppingList {
+/** The planned meals of `days` days from today, and the recipe lines of those counted in the list. */
+function planned(days: number) {
   const dates = daysFrom(today(), days);
   const entries = db
     .select({ entryId: planEntry.id, excluded: planEntry.excluded, recipeId: planEntry.recipeId, servings: planSlot.servings, date: planSlot.date, moment: planSlot.moment, mealId: meal.id, mealName: meal.name })
@@ -37,11 +34,19 @@ export function getShoppingList(days: number): ShoppingList {
       grams: l.grams,
       baseServings: r!.servings,
       slotServings: e.servings,
+      mealId: e.mealId,
       mealName: e.mealName,
       date: e.date,
+      moment: e.moment,
     }));
   });
-  const bought = new Map(db.select().from(shoppingCheck).all().map((c) => [c.ingredientId, c.until]));
+  return { dates, entries, recipes, lines };
+}
+
+/** What to buy for the meals planned over `days` days starting today, plus the lines added by hand. */
+export function getShoppingList(days: number): ShoppingList {
+  const { dates, entries, recipes, lines } = planned(days);
+  const bought = new Set(db.select().from(shoppingBought).all().map(boughtKey));
   return {
     from: dates[0]!,
     to: dates.at(-1)!,
@@ -59,15 +64,20 @@ export function getShoppingList(days: number): ShoppingList {
   };
 }
 
-/** Ticking in the list of `days` days means "bought for everything planned up to its last day"; unticking forgets the ingredient. */
+/**
+ * Ticking in the list of `days` days means "bought for the meals counted in it now": a meal planned or put in the list
+ * later comes back to buy. Unticking forgets the ingredient for every meal.
+ */
 export function setShoppingCheck({ days, ingredientId, checked }: ShoppingCheckInput): ShoppingList {
-  db.delete(shoppingCheck).where(lt(shoppingCheck.until, today())).run(); // ticks of past days are obsolete
+  db.delete(shoppingBought).where(lt(shoppingBought.date, today())).run(); // ticks of past days are obsolete
   if (checked) {
-    db.insert(shoppingCheck)
-      .values({ ingredientId, until: lastDay(days) })
-      .onConflictDoUpdate({ target: shoppingCheck.ingredientId, set: { until: sql`max(${shoppingCheck.until}, excluded.until)` } })
-      .run();
-  } else db.delete(shoppingCheck).where(eq(shoppingCheck.ingredientId, ingredientId)).run();
+    const covered = planned(days).lines.filter((l) => l.ingredientId === ingredientId);
+    if (covered.length)
+      db.insert(shoppingBought)
+        .values(covered.map(({ date, moment, mealId }) => ({ ingredientId, date, moment, mealId })))
+        .onConflictDoNothing()
+        .run();
+  } else db.delete(shoppingBought).where(eq(shoppingBought.ingredientId, ingredientId)).run();
   return getShoppingList(days);
 }
 
@@ -77,7 +87,15 @@ export function setShoppingExclusion({ days, entryId, excluded }: ShoppingExclud
   return getShoppingList(days);
 }
 
-const listShoppingExtras = (): ShoppingExtra[] => db.select().from(shoppingExtra).orderBy(asc(shoppingExtra.id)).all();
+/** The hand-added lines; those ticked before today are gone (bought on an earlier trip). */
+function listShoppingExtras(): ShoppingExtra[] {
+  db.delete(shoppingExtra).where(and(eq(shoppingExtra.checked, true), lt(shoppingExtra.checkedOn, today()))).run();
+  return db
+    .select({ id: shoppingExtra.id, label: shoppingExtra.label, checked: shoppingExtra.checked, aisle: shoppingExtra.aisle })
+    .from(shoppingExtra)
+    .orderBy(asc(shoppingExtra.id))
+    .all();
+}
 
 /** "Citrons" → "citron": a label compared with ingredient names, accents, case and plural aside. */
 const stem = (s: string) => normalize(s).replace(/(?<=\w{3})[sx]$/, "");
@@ -108,7 +126,8 @@ export function sortExtras(aisles: Record<number, string>): void {
 
 export function updateShoppingExtra(id: number, patch: ShoppingExtraUpdate): ShoppingExtra[] {
   if (!db.select().from(shoppingExtra).where(eq(shoppingExtra.id, id)).get()) throw notFound("Ligne", id);
-  if (Object.keys(patch).length) db.update(shoppingExtra).set(patch).where(eq(shoppingExtra.id, id)).run();
+  const checkedOn = patch.checked === undefined ? {} : { checkedOn: patch.checked ? today() : null };
+  if (Object.keys(patch).length) db.update(shoppingExtra).set({ ...patch, ...checkedOn }).where(eq(shoppingExtra.id, id)).run();
   return listShoppingExtras();
 }
 

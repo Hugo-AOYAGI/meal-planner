@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { recipeNutrition, type NutritionLine } from "@shared/calc/nutrition";
 import { scale } from "@shared/calc/scale";
-import { aggregateShopping, type ShoppingSourceLine } from "@server/services/calc/shopping";
+import { aggregateShopping, boughtKey, type ShoppingSourceLine } from "@server/services/calc/shopping";
 import { createBalance } from "@server/services/calc/balance";
 import { drawMeals, weight, type DrawCandidate } from "@server/services/calc/draw";
 
@@ -59,8 +59,10 @@ const src = (o: Partial<ShoppingSourceLine>): ShoppingSourceLine => ({
   grams: 200,
   baseServings: 2,
   slotServings: 2,
+  mealId: 1,
   mealName: "Soupe",
   date: "2026-11-14",
+  moment: "soir",
   ...o,
 });
 
@@ -73,7 +75,7 @@ describe("aggregateShopping", () => {
         src({ unit: "g", quantity: 50, grams: 50 }),
         src({ ingredientId: 2, ingredientName: "Lait", aisle: "cremerie", quantity: 1, unit: "l", grams: 1000 }),
       ],
-      new Map([[2, "2026-11-14"]]),
+      new Set(["2/2026-11-14/soir/1"]),
     );
     expect(aisles.map((a) => a.aisle)).toEqual(["fruits_legumes", "cremerie"]);
     const oignons = aisles[0]!.items[0]!;
@@ -89,19 +91,18 @@ describe("aggregateShopping", () => {
     const [a] = aggregateShopping([src({}), src({ grams: null })]);
     expect(a!.items[0]!.totalGrams).toBeNull();
   });
-  test("an ingredient bought until a day only lists what is planned after it", () => {
-    const lines = [src({}), src({ date: "2026-11-18", slotServings: 4, mealName: "Tarte" })];
-    const item = (until: string) => aggregateShopping(lines, new Map([[1, until]]))[0]!.items[0]!;
-    expect(item("2026-11-16")).toMatchObject({
-      checked: false,
-      quantities: [{ unit: "", quantity: 4 }],
-      meals: ["Tarte"],
-    });
-    expect(item("2026-11-18")).toMatchObject({
+  test("a tick covers the meals counted when it was made: one planned or counted since comes back to buy", () => {
+    const soupe = src({});
+    const tarte = src({ date: "2026-11-18", slotServings: 4, mealId: 2, mealName: "Tarte" });
+    const item = (bought: string[]) => aggregateShopping([soupe, tarte], new Set(bought))[0]!.items[0]!;
+    expect(item([boughtKey(soupe)])).toMatchObject({ checked: false, quantities: [{ unit: "", quantity: 4 }], meals: ["Tarte"] });
+    expect(item([boughtKey(soupe), boughtKey(tarte)])).toMatchObject({
       checked: true,
       quantities: [{ unit: "", quantity: 6 }],
       meals: ["Soupe", "Tarte"],
     });
+    // another meal in the same slot is not covered by the tick
+    expect(item([boughtKey(soupe), boughtKey({ ...tarte, mealId: 3 })]).checked).toBe(false);
   });
 });
 
