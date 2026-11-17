@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invalidate } from "@/lib/api/query";
+import { onChatEvent } from "@/lib/hooks/use-live-updates";
 import { isWriteTool } from "@/features/chat/messages/tool-label";
 
 const KEY = "meal-planner.conversation";
@@ -25,7 +26,7 @@ const stored = {
   },
 };
 
-/** The API answers `{ error }` (409 "occupé") as the error message's text. */
+/** The API answers `{ error }` as the error message's text. */
 function errorText(error: Error) {
   try {
     const parsed = JSON.parse(error.message) as { error?: unknown };
@@ -50,6 +51,8 @@ export function useChatSession() {
     stored.set(id);
   }, []);
   const writes = useRef(0);
+  /** The message sent waits for another turn to end. */
+  const [queued, setQueued] = useState(false);
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -64,15 +67,24 @@ export function useChatSession() {
     transport,
     onData: (part) => {
       if (part.type !== "data-conversation") return;
-      select((part.data as { id: string }).id);
+      const data = part.data as { id: string; queued?: boolean };
+      select(data.id);
+      setQueued(!!data.queued);
     },
     onFinish: () => void invalidate.all(queryClient), // also refreshes the history list
   });
   const { messages, setMessages, clearError, resumeStream } = chat;
+  const busy = chat.status === "submitted" || chat.status === "streaming";
+  const following = useRef(busy);
+  following.current = busy;
+  useEffect(() => {
+    if (!busy) setQueued(false);
+  }, [busy]);
 
-  /** The turn runs on the server and survives this page: stopping it takes a request, not just dropping the stream. */
+  /** The turn runs on the server and survives this page: stopping it takes a request, not just dropping the stream. Also stops a turn sent from another device in this conversation. */
   const stop = useCallback(async () => {
-    await fetch("/api/chat/stop", { method: "POST" }).catch(() => {});
+    const id = conversationId.current;
+    if (id) await fetch(`/api/chat/${id}/stop`, { method: "POST" }).catch(() => {});
     await chat.stop();
   }, [chat.stop]);
 
@@ -114,6 +126,17 @@ export function useChatSession() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [chat.stop, clearError, load]);
 
+  // a turn sent from another device in this conversation: show it as it goes (ours is already followed by its request)
+  useEffect(
+    () =>
+      onChatEvent(({ conversationId: id, phase }) => {
+        if (phase !== "start" || id !== conversationId.current || following.current) return;
+        clearError();
+        void load(id, true);
+      }),
+    [clearError, load],
+  );
+
   // refresh the screens after each write tool, not only at the end of the run
   useEffect(() => {
     const n = doneWrites(messages);
@@ -123,25 +146,25 @@ export function useChatSession() {
 
   const send = useCallback((text: string, files: FileUIPart[]) => chat.sendMessage({ text, files }), [chat.sendMessage]);
 
+  /** Leaving a conversation leaves its turn running on the server (it may be someone else's): only the stream is dropped. */
   const reset = useCallback(() => {
-    void stop();
+    void chat.stop();
     clearError();
     setMessages([]);
     writes.current = 0;
     select(null);
-  }, [stop, clearError, setMessages, select]);
+  }, [chat.stop, clearError, setMessages, select]);
 
   /** Reopens a past conversation; the next message resumes it. */
   const open = useCallback(
     async (id: string) => {
-      void stop();
+      void chat.stop();
       clearError();
       select(id);
       await load(id, true);
     },
-    [stop, clearError, select, load],
+    [chat.stop, clearError, select, load],
   );
 
-  const busy = chat.status === "submitted" || chat.status === "streaming";
-  return { messages, status: chat.status, busy, error: chat.error ? errorText(chat.error) : null, conversationId: currentId, send, stop, reset, open };
+  return { messages, status: chat.status, busy, queued, error: chat.error ? errorText(chat.error) : null, conversationId: currentId, send, stop, reset, open };
 }

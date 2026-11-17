@@ -5,7 +5,7 @@ import { recipe } from "../db/schema";
 import { emitChanged } from "../events";
 import { listMeals } from "../services/catalog/meals";
 import { getSettings } from "../services/support/settings";
-import { isBusy, startRun } from "./runtime/live-run";
+import { isBusy, queueRun } from "./runtime/live-run";
 import { runTurn } from "./runtime/providers";
 
 /** The draw's "Nouveau" card wants this many assistant ideas in stock. */
@@ -44,9 +44,9 @@ Ne réponds rien d'autre qu'un court bilan.`,
   return jobs;
 }
 
-/** Runs one job through the chat's single run slot, so it never overlaps a conversation. */
+/** Runs one job through the chat's turn queue, so it never overlaps a conversation (a message sent meanwhile waits for it). */
 async function runJob(job: { name: string; prompt: string }): Promise<void> {
-  const run = startRun(`background:${job.name}`, (signal) => {
+  const run = queueRun(`background:${job.name}`, (signal) => {
     const turn = runTurn({
       assistant: getSettings().assistant,
       input: { text: job.prompt, images: [], signal },

@@ -9,7 +9,7 @@ import { useChatSession } from "@/features/chat/session/use-chat-session";
 
 /** The assistant. Fills its container: header, scrolling messages (or the history list), input pinned at the bottom. */
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
-  const { messages, status, busy, error, conversationId, send, stop, reset, open } = useChatSession();
+  const { messages, status, busy, queued, error, conversationId, send, stop, reset, open } = useChatSession();
   const [history, setHistory] = useState(false);
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-background">
@@ -58,7 +58,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
       )}
       {/* kept mounted behind the history so a half-typed message survives */}
       <div className={history ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
-        <MessageList messages={messages} status={status} />
+        <MessageList messages={messages} status={status} queued={queued} />
         {error && (
           <p role="alert" className="px-3 pb-2 text-xs text-destructive">
             {error}

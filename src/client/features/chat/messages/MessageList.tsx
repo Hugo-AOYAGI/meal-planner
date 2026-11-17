@@ -109,7 +109,8 @@ function ChatMessage({ message, live }: { message: UIMessage; live: boolean }) {
   );
 }
 
-export function MessageList({ messages, status }: { messages: UIMessage[]; status: ChatStatus }) {
+/** `queued`: the message sent waits for a turn of another conversation (or device) to end. */
+export function MessageList({ messages, status, queued = false }: { messages: UIMessage[]; status: ChatStatus; queued?: boolean }) {
   const busy = status === "submitted" || status === "streaming";
   const last = messages.at(-1);
   const waiting = busy && (last?.role === "user" || last?.parts.length === 0);
@@ -133,7 +134,7 @@ export function MessageList({ messages, status }: { messages: UIMessage[]; statu
             {waiting && (
               <Trace>
                 <TraceLine status="running">
-                  <TraceTitle>Réflexion</TraceTitle>
+                  <TraceTitle>{queued ? "En attente" : "Réflexion"}</TraceTitle>
                 </TraceLine>
               </Trace>
             )}

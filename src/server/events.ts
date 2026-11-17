@@ -2,11 +2,17 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { streamSSE } from "hono/streaming";
 import { onGameChange } from "./services/game/store";
 
-/** In-process bus: one listener per connected browser. `origin` is the client that made the change (it already refreshed itself). */
-const listeners = new Set<(origin: string) => void>();
+/** In-process bus: one listener per connected browser. */
+const listeners = new Set<(event: string, data: string) => void>();
 
+/** Data changed. `origin` is the client that made the change (it already refreshed itself). */
 export const emitChanged = (origin = "") => {
-  for (const send of listeners) send(origin);
+  for (const send of listeners) send("changed", origin);
+};
+
+/** A turn of the assistant started or ended in this conversation: browsers showing it follow the turn. */
+export const emitChat = (conversationId: string, phase: "start" | "end") => {
+  for (const send of listeners) send("chat", JSON.stringify({ conversationId, phase }));
 };
 
 /**
@@ -25,11 +31,12 @@ const HEARTBEAT_MS = 25_000;
 
 /**
  * SSE: a `changed` event (data = origin client id, possibly empty) per write, a `draw` event (data = game id, empty when
- * it ended) per move of the draw game; a comment as heartbeat keeps the proxy from closing an idle stream.
+ * it ended) per move of the draw game, a `chat` event (data = JSON `{ conversationId, phase }`) per turn start and end of
+ * the assistant; a comment as heartbeat keeps the proxy from closing an idle stream.
  */
 export const eventsRoute = new Hono().get("/", (c) =>
   streamSSE(c, async (stream) => {
-    const send = (origin: string) => void stream.writeSSE({ event: "changed", data: origin });
+    const send = (event: string, data: string) => void stream.writeSSE({ event, data });
     const heartbeat = setInterval(() => void stream.write(": ping\n\n"), HEARTBEAT_MS);
     listeners.add(send);
     const stopGame = onGameChange((gameId) => void stream.writeSSE({ event: "draw", data: gameId }));
