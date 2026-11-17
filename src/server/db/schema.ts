@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, real, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 import type { Aisle, IngredientSource, MealKind, MealStatus, Moment } from "@shared/constants";
 import type { Extras100 } from "@shared/nutrients";
 
@@ -105,17 +105,28 @@ export const planEntry = sqliteTable(
   (t) => [index("plan_entry_slot").on(t.slotId), index("plan_entry_meal").on(t.mealId)],
 );
 
-/** A row means the ingredient is bought for everything planned up to `until` (included); see `aggregateShopping`. */
-export const shoppingCheck = sqliteTable("shopping_check", {
-  ingredientId: integer("ingredient_id").primaryKey().references(() => ingredient.id, { onDelete: "cascade" }),
-  until: text("until").notNull(),
-});
+/**
+ * A row means the ingredient is bought for one planned meal (its slot and meal): a meal planned or put in the list
+ * afterwards is not covered, so its share comes back to buy. Rows of past days are dropped. See `aggregateShopping`.
+ */
+export const shoppingBought = sqliteTable(
+  "shopping_bought",
+  {
+    ingredientId: integer("ingredient_id").notNull().references(() => ingredient.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+    moment: text("moment").$type<Moment>().notNull(),
+    mealId: integer("meal_id").notNull().references(() => meal.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.ingredientId, t.date, t.moment, t.mealId] })],
+);
 
-/** Lines added by hand: one list, whatever the period shown; they stay until removed. */
+/** Lines added by hand: one list, whatever the period shown; a ticked one is removed the next day. */
 export const shoppingExtra = sqliteTable("shopping_extra", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   label: text("label").notNull(),
   checked: integer("checked", { mode: "boolean" }).notNull().default(false),
+  /** the day it was ticked: it is removed from the next day on */
+  checkedOn: text("checked_on"),
   /** the aisle it is shown in; null while it is being classified (see `classifyExtras`) */
   aisle: text("aisle").$type<Aisle>(),
 });

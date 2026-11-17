@@ -177,7 +177,7 @@ export const appTools = [
   define("add_shopping_item", "Ajoute un article libre à la liste de courses (ex. « Café ») dans son rayon (aisle) ; il y reste jusqu'à ce qu'on le retire.", shoppingExtraInputSchema.required({ aisle: true }), addShoppingExtra),
   define(
     "check_shopping_item",
-    "Coche ou décoche une ligne de la liste de courses : un ingrédient (ingredientId) ou un ajout manuel (extraId). Cocher un ingrédient signifie « acheté pour les `days` prochains jours ».",
+    "Coche ou décoche une ligne de la liste de courses : un ingrédient (ingredientId) ou un ajout manuel (extraId). Cocher un ingrédient signifie « acheté pour les repas comptés dans la liste des `days` prochains jours » : un repas planifié ou ajouté à la liste ensuite revient à acheter. Un ajout manuel coché disparaît le lendemain.",
     z.object({ days: DAYS, ingredientId: idSchema.optional(), extraId: idSchema.optional(), checked: z.boolean() }),
     ({ days, ingredientId, extraId, checked }) => {
       if (extraId) updateShoppingExtra(extraId, { checked });
