@@ -14,14 +14,10 @@ export const slotKey = (slot: { date: string; moment: Moment }) => `${slot.date}
 /** A slot the game fills, with what applying a proposal to it keeps and expects (see `Suggestion`). */
 export type GameSlot = Omit<Suggestion, "meals">;
 
-/** A hand fits a phone screen without scrolling: at most 6 cards, 3 picks per round; more slots take more rounds. */
+/** A hand fits a phone screen without scrolling: at most 6 cards; what is not agreed on goes to another round. */
 const MAX_HAND = 6;
 const QUICK_HAND = 4;
-const MAX_PICKS = 3;
 const RESERVE_PER_HAND = 1;
-
-/** How many cards each player picks this round, for `needed` empty slots. */
-export const picksPerRound = (needed: number) => Math.min(needed, MAX_PICKS);
 
 /** Cards dealt for a round of `picks` picks: about two per pick, so each player has a real choice. */
 export const handSize = (mode: GameMode, picks: number) =>

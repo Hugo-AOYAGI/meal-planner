@@ -54,7 +54,7 @@ export const gameViewSchema = z.object({
   slots: z.array(slotRefSchema),
   /** slots still without a match */
   needed: z.number().int(),
-  /** cards each player picks this round (a hand fits a screen: big plans take several rounds) */
+  /** at most this many picks this round: the slots still empty, within the hand */
   toPick: z.number().int(),
   hand: z.array(gameCardSchema),
   myPicks: z.array(z.string()),

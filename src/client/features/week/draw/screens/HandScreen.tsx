@@ -49,7 +49,11 @@ export function HandScreen({ session, view }: { session: GameSession; view: Game
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-bold">
-          Choisis {view.toPick > 1 ? `jusqu’à ${view.toPick} plats` : "1 plat"}
+          {view.toPick >= view.hand.length && view.toPick > 1
+            ? "Touche ceux qui te tentent"
+            : view.toPick > 1
+              ? `Choisis jusqu’à ${view.toPick} plats`
+              : "Choisis 1 plat"}
           {!alone && <span className="font-semibold text-dim"> · en secret</span>}
           {(view.needed > view.toPick || view.round > 1) && (
             <span className="block text-xs font-semibold text-dim">

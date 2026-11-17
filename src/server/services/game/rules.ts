@@ -3,15 +3,15 @@ import type { GameAction, GameCard, GameOptions, GameStart } from "@shared/schem
 import type { Random } from "../calc/draw";
 import { AppError } from "../support/errors";
 import { getSettings } from "../support/settings";
-import { dealCards, handSize, picksPerRound, slotKey, slotsFor } from "./deal";
+import { dealCards, handSize, slotKey, slotsFor } from "./deal";
 import { refuse, validate } from "./finish";
 import { addToReserve, currentGame, setGame, type Game } from "./store";
 
 const mealIdsOf = (cards: GameCard[]) => cards.flatMap((c) => c.meals.map((m) => m.id));
 export const needed = (game: Game) => Math.max(0, game.slots.length - game.matches.length);
-/** How many cards each player picks this round. */
-export const toPick = (game: Game) => picksPerRound(needed(game));
-const roundHand = (game: Game) => handSize(game.mode, toPick(game));
+/** How many cards each player may pick this round: any they like, up to the slots still empty. */
+export const toPick = (game: Game) => Math.min(needed(game), game.hand.length);
+const roundHand = (game: Game) => handSize(game.mode, needed(game));
 const cardsById = (game: Game, ids: string[]) => game.hand.filter((c) => ids.includes(c.id));
 
 function deal(game: Game, count: number): GameCard[] {
@@ -151,7 +151,7 @@ function changeOptions(game: Game, change: Extract<GameAction, { type: "options"
     game.matches = game.matches.slice(0, game.slots.length);
   }
   if (game.phase !== "picking") return void (needed(game) ? nextRound(game) : toPlacing(game));
-  const n = toPick(game);
+  const n = needed(game);
   const picked = new Set(Object.values(game.picks).flat());
   if (statusChanged) game.hand = game.hand.filter((c) => picked.has(c.id));
   const target = roundHand(game);
@@ -184,7 +184,7 @@ export function act(player: string, action: GameAction): Game | null {
       expect(game, "picking");
       if (!game.hand.some((c) => c.id === action.card)) throw new AppError("Carte inconnue.");
       const picks = game.picks[player]!;
-      const n = toPick(game);
+      const n = needed(game);
       if (picks.includes(action.card)) picks.splice(picks.indexOf(action.card), 1);
       else if (picks.length < n) picks.push(action.card);
       else if (n === 1) picks.splice(0, 1, action.card);

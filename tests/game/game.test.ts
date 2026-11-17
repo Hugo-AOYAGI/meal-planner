@@ -121,19 +121,20 @@ test("changing the duration adapts the slots and the hand instead of starting ov
   expect(game.hand.map((c) => c.id)).toContain(first[0]!);
 });
 
-test("a long plan fits the screen: at most 6 cards and 3 picks a round, then another round", () => {
-  const game = start(5);
+test("a long plan fits the screen: at most 6 cards, any number picked up to the empty slots, then another round", () => {
+  const game = start(7);
   expect(game.hand).toHaveLength(6);
-  expect(viewFor(game, "a").toPick).toBe(3);
+  expect(viewFor(game, "a").toPick).toBe(6);
   const ids = game.hand.map((c) => c.id);
-  for (const id of ids.slice(0, 3)) act("a", { type: "pick", card: id });
-  expect(() => act("a", { type: "pick", card: ids[3]! })).toThrow();
+  for (const id of ids.slice(0, 4)) act("a", { type: "pick", card: id });
   act("a", { type: "ready", ready: true });
   expect(game.phase).toBe("picking");
   expect(game.round).toBe(2);
-  expect(viewFor(game, "a").toPick).toBe(2);
-  expect(game.hand).toHaveLength(4);
+  expect(viewFor(game, "a").toPick).toBe(3);
+  expect(game.hand).toHaveLength(6);
   expect(game.hand.some((c) => ids.includes(c.id))).toBe(false);
+  for (const id of game.hand.slice(0, 3).map((c) => c.id)) act("a", { type: "pick", card: id });
+  expect(() => act("a", { type: "pick", card: game.hand[3]!.id })).toThrow();
 });
 
 test("once members are declared, only they play, and a game started by someone else is dropped", () => {
