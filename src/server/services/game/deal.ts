@@ -14,14 +14,12 @@ export const slotKey = (slot: { date: string; moment: Moment }) => `${slot.date}
 /** A slot the game fills, with what applying a proposal to it keeps and expects (see `Suggestion`). */
 export type GameSlot = Omit<Suggestion, "meals">;
 
-/** A hand fits a phone screen without scrolling: at most 6 cards; what is not agreed on goes to another round. */
-const MAX_HAND = 6;
-const QUICK_HAND = 4;
+/** A hand fits a phone screen without scrolling; what is not agreed on goes to another round. */
+const HAND = 6;
 const RESERVE_PER_HAND = 1;
 
-/** Cards dealt for a round of `picks` picks: about two per pick, so each player has a real choice. */
-export const handSize = (mode: GameMode, picks: number) =>
-  picks <= 0 ? 0 : mode === "quick" ? QUICK_HAND : Math.min(MAX_HAND, Math.max(picks * 2, picks + 2));
+/** Cards dealt for a round while `needed` slots are empty: always a full hand, so there is a real choice even for one meal. */
+export const handSize = (needed: number) => (needed <= 0 ? 0 : HAND);
 
 /**
  * The slots a game fills. A plan game takes the empty slots of the chosen moments from today on;

@@ -61,7 +61,7 @@ export function SlotEditor({ slot, onClose, onView }: SlotEditorProps) {
               className="-ml-2 flex min-h-9 min-w-0 flex-1 items-center gap-1 rounded-md px-2 text-left text-[15px] font-bold outline-none hover:bg-subtle focus-visible:bg-subtle active:bg-active max-md:min-h-11"
             >
               <span className="truncate">{entry.mealName}</span>
-              {entry.excluded && <span className="micro-label shrink-0 pl-1">hors courses</span>}
+              {!entry.excluded && <span className="micro-label shrink-0 pl-1">aux courses</span>}
               <ChevronRight className="size-4 shrink-0 text-dim" />
             </button>
             {entry.recipeOptions.length > 1 && (

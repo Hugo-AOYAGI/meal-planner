@@ -9,6 +9,7 @@ import {
   shoppingExtraUpdateSchema,
   shoppingQuerySchema,
 } from "@shared/schemas";
+import { classifyExtras } from "../agent/background";
 import {
   addShoppingExtra,
   deleteShoppingExtra,
@@ -24,7 +25,11 @@ export const shoppingRoute = new Hono()
   .get("/", zValidator("query", shoppingQuerySchema), (c) => c.json(getShoppingList(c.req.valid("query").days)))
   .put("/check", zValidator("json", shoppingCheckInputSchema), (c) => c.json(setShoppingCheck(c.req.valid("json"))))
   .put("/exclude", zValidator("json", shoppingExcludeInputSchema), (c) => c.json(setShoppingExclusion(c.req.valid("json"))))
-  .post("/extras", zValidator("json", shoppingExtraInputSchema), (c) => c.json(addShoppingExtra(c.req.valid("json")), 201))
+  .post("/extras", zValidator("json", shoppingExtraInputSchema), (c) => {
+    const extras = addShoppingExtra(c.req.valid("json"));
+    if (extras.some((e) => e.aisle === null)) void classifyExtras();
+    return c.json(extras, 201);
+  })
   .patch("/extras/:id", zValidator("param", idParam), zValidator("json", shoppingExtraUpdateSchema), (c) =>
     c.json(updateShoppingExtra(c.req.valid("param").id, c.req.valid("json"))),
   )

@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { AISLE_LABELS } from "@shared/constants";
+import { AISLE_LABELS, AISLES } from "@shared/constants";
 import type { ShoppingExtra, ShoppingItem } from "@shared/schemas";
 import { TextTabs } from "@/components/layout/TextTabs";
 import { Toolbar } from "@/components/layout/Toolbar";
@@ -45,22 +45,31 @@ export function ShoppingPage() {
       detail={detail}
       {...quantityParts(item)}
       checked={item.checked}
-      onCheckedChange={(checked) => actions.checkItem.mutate({ ingredientId: item.ingredientId, checked })}
+      onCheckedChange={(checked) => actions.checkItem({ ingredientId: item.ingredientId, checked })}
     />
   );
+  /** a line not yet saved (negative id) cannot be ticked or removed */
   const extraRow = (extra: ShoppingExtra) => (
     <ShoppingRow
       key={extra.id}
       label={extra.label}
+      detail={extra.aisle ? "Ajout" : extra.id < 0 ? "En attente" : "Rangement en cours…"}
       checked={extra.checked}
-      onCheckedChange={(checked) => actions.checkExtra.mutate({ id: extra.id, checked })}
+      onCheckedChange={(checked) => extra.id > 0 && actions.checkExtra({ id: extra.id, checked })}
       action={
-        <Button variant="ghost" size="icon-sm" aria-label="Retirer" className="-mr-2" onClick={() => actions.removeExtra.mutate(extra.id)}>
+        <Button variant="ghost" size="icon-sm" aria-label="Retirer" className="-mr-2" disabled={extra.id < 0} onClick={() => actions.removeExtra(extra.id)}>
           <X />
         </Button>
       }
     />
   );
+  // hand-added lines sit in their aisle, after the recipe items
+  const openExtras = extras.filter((e) => !e.checked);
+  const sections = AISLES.flatMap((aisle) => {
+    const open = (list?.aisles.find((a) => a.aisle === aisle)?.items ?? []).filter((i) => !i.checked);
+    const added = openExtras.filter((e) => e.aisle === aisle);
+    return open.length || added.length ? [{ aisle, open, added }] : [];
+  });
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-3 md:gap-4">
@@ -73,22 +82,21 @@ export function ShoppingPage() {
         <p className="micro-label -mt-1 ml-0.5">
           {rangeLabel(list.from, list.to)}
           {total === 0 && " · rien à acheter"}
-          {query.isError && ` · hors ligne${pending > 0 ? `, ${pending} en attente` : ""}`}
+          {query.isError ? ` · hors ligne${pending > 0 ? `, ${pending} en attente` : ""}` : pending > 0 && ` · ${pending} en attente`}
         </p>
       )}
-      {list && <MealsSection meals={list.meals} onToggle={(m, excluded) => actions.excludeMeal.mutate({ entryId: m.entryId, excluded })} />}
-      {list?.aisles.map(({ aisle, items }) => {
-        const open = items.filter((i) => !i.checked);
-        return open.length > 0 && (
+      {list && <MealsSection meals={list.meals} onToggle={(m, excluded) => actions.excludeMeal({ entryId: m.entryId, excluded })} />}
+      {list &&
+        sections.map(({ aisle, open, added }) => (
           <ListSection key={aisle} title={AISLE_LABELS[aisle]}>
             {open.map((item) => itemRow(item, item.meals.join(", ")))}
+            {added.map(extraRow)}
           </ListSection>
-        );
-      })}
+        ))}
       {list && (
-        <ListSection title="Ajouts">
-          {extras.filter((e) => !e.checked).map(extraRow)}
-          <AddExtra onAdd={(label) => actions.addExtra.mutate(label)} />
+        <ListSection title="Ajouter">
+          {openExtras.filter((e) => !e.aisle).map(extraRow)}
+          <AddExtra onAdd={(label) => actions.addExtra(label)} />
         </ListSection>
       )}
       {done > 0 && (

@@ -1,0 +1,1 @@
+ALTER TABLE `shopping_extra` ADD `aisle` text;

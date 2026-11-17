@@ -1,6 +1,7 @@
 import { Dices, Flag, Smartphone } from "lucide-react";
 import type { GameView } from "@shared/schemas";
 import { Button } from "@/components/ui/actions/button";
+import { cn } from "@/lib/formatting/utils";
 import { GameCardTile } from "../cards/GameCardTile";
 import type { GameSession } from "../use-game-session";
 
@@ -24,11 +25,13 @@ function AloneHint({ session, view }: { session: GameSession; view: GameView }) 
   );
 }
 
-/** The secret round: pick as many cards as there are slots to fill, then say you are ready. */
+/** The secret round: pick about as many cards as there are slots to fill (more is allowed), then say you are ready. */
 export function HandScreen({ session, view }: { session: GameSession; view: GameView }) {
   const alone = view.players.length === 1;
   const ready = !!view.players.find((p) => p.id === view.me)?.ready;
   const picked = view.myPicks.length;
+  /** more picks than empty slots: allowed, the extra matches go to the reserve */
+  const over = picked > view.toPick;
   const toggle = (card: string) => session.act({ type: "pick", card });
 
   if (!view.hand.length)
@@ -49,19 +52,16 @@ export function HandScreen({ session, view }: { session: GameSession; view: Game
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-bold">
-          {view.toPick >= view.hand.length && view.toPick > 1
-            ? "Touche ceux qui te tentent"
-            : view.toPick > 1
-              ? `Choisis jusqu’à ${view.toPick} plats`
-              : "Choisis 1 plat"}
+          {view.toPick > 1 ? `Choisis ${view.toPick} plats` : "Choisis 1 plat"}
           {!alone && <span className="font-semibold text-dim"> · en secret</span>}
-          {(view.needed > view.toPick || view.round > 1) && (
-            <span className="block text-xs font-semibold text-dim">
-              Manche {view.round} · {view.needed} repas à trouver
-            </span>
-          )}
+          <span className="block text-xs font-semibold text-dim">
+            {over ? "En trop : ils iront dans les envies communes" : view.round > 1 ? `Manche ${view.round} · ${view.needed} repas à trouver` : "Plus si tu veux, le surplus est gardé"}
+          </span>
         </p>
-        <span className="display text-2xl tabular-nums" aria-label={`${picked} sur ${view.toPick}`}>
+        <span
+          className={cn("display text-2xl tabular-nums transition-colors", over && "text-brand-text")}
+          aria-label={`${picked} sur ${view.toPick}`}
+        >
           {picked} / {view.toPick}
         </span>
       </div>

@@ -1,8 +1,10 @@
-import { asc, eq, inArray, lt, sql } from "drizzle-orm";
+import { asc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { AISLES, type Aisle } from "@shared/constants";
+import { normalize } from "@shared/text";
 import { addDays, daysFrom, today } from "@shared/dates";
 import type { ShoppingCheckInput, ShoppingExcludeInput, ShoppingExtra, ShoppingExtraInput, ShoppingExtraUpdate, ShoppingList } from "@shared/schemas";
 import { db } from "../../db";
-import { meal, planEntry, planSlot, shoppingCheck, shoppingExtra } from "../../db/schema";
+import { ingredient, meal, planEntry, planSlot, shoppingCheck, shoppingExtra } from "../../db/schema";
 import { aggregateShopping, type ShoppingSourceLine } from "../calc/shopping";
 import { notFound } from "../support/errors";
 import { getRecipes } from "../catalog/recipes";
@@ -77,9 +79,31 @@ export function setShoppingExclusion({ days, entryId, excluded }: ShoppingExclud
 
 const listShoppingExtras = (): ShoppingExtra[] => db.select().from(shoppingExtra).orderBy(asc(shoppingExtra.id)).all();
 
-export function addShoppingExtra({ label }: ShoppingExtraInput): ShoppingExtra[] {
-  db.insert(shoppingExtra).values({ label }).run();
+/** "Citrons" → "citron": a label compared with ingredient names, accents, case and plural aside. */
+const stem = (s: string) => normalize(s).replace(/(?<=\w{3})[sx]$/, "");
+
+/** The aisle of the ingredient called like `label`, if the library has one. */
+export function guessAisle(label: string): Aisle | null {
+  const key = stem(label);
+  const rows = db.select({ name: ingredient.name, aisle: ingredient.aisle }).from(ingredient).all();
+  return rows.find((r) => stem(r.name) === key)?.aisle ?? null;
+}
+
+/** A hand-added line goes in its aisle: given, or that of the ingredient with its name; otherwise `classifyExtras` sorts it. */
+export function addShoppingExtra({ label, aisle }: ShoppingExtraInput): ShoppingExtra[] {
+  db.insert(shoppingExtra).values({ label, aisle: aisle ?? guessAisle(label) }).run();
   return listShoppingExtras();
+}
+
+/** Hand-added lines not sorted into an aisle yet. */
+export const unsortedExtras = () => db.select({ id: shoppingExtra.id, label: shoppingExtra.label }).from(shoppingExtra).where(isNull(shoppingExtra.aisle)).all();
+
+/** Files lines in their aisle (an unknown aisle becomes "autre"); lines removed meanwhile are skipped. */
+export function sortExtras(aisles: Record<number, string>): void {
+  for (const [id, aisle] of Object.entries(aisles)) {
+    const valid = (AISLES as readonly string[]).includes(aisle) ? (aisle as Aisle) : "autre";
+    db.update(shoppingExtra).set({ aisle: valid }).where(eq(shoppingExtra.id, Number(id))).run();
+  }
 }
 
 export function updateShoppingExtra(id: number, patch: ShoppingExtraUpdate): ShoppingExtra[] {

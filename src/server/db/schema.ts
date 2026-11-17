@@ -99,7 +99,7 @@ export const planEntry = sqliteTable(
     mealId: integer("meal_id").notNull().references(() => meal.id, { onDelete: "cascade" }),
     recipeId: integer("recipe_id").references(() => recipe.id, { onDelete: "set null" }),
     position: integer("position").notNull().default(0),
-    /** left out of the shopping list (eaten out, already in stock...); `applySlot` carries it over when a slot is rewritten */
+    /** left out of the shopping list: newly planned meals start out, they are put in by hand; `applySlot` carries it over when a slot is rewritten */
     excluded: integer("excluded", { mode: "boolean" }).notNull().default(false),
   },
   (t) => [index("plan_entry_slot").on(t.slotId), index("plan_entry_meal").on(t.mealId)],
@@ -116,6 +116,8 @@ export const shoppingExtra = sqliteTable("shopping_extra", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   label: text("label").notNull(),
   checked: integer("checked", { mode: "boolean" }).notNull().default(false),
+  /** the aisle it is shown in; null while it is being classified (see `classifyExtras`) */
+  aisle: text("aisle").$type<Aisle>(),
 });
 
 /** A standing note about the household ("Léo n'aime pas les champignons"), read by the assistant at every turn. */
