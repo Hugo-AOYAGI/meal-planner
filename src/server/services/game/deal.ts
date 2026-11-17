@@ -14,14 +14,18 @@ export const slotKey = (slot: { date: string; moment: Moment }) => `${slot.date}
 /** A slot the game fills, with what applying a proposal to it keeps and expects (see `Suggestion`). */
 export type GameSlot = Omit<Suggestion, "meals">;
 
-/** The most cards a hand holds, and how many a quick draw shows. */
-const MAX_HAND = 14;
+/** A hand fits a phone screen without scrolling: at most 6 cards, 3 picks per round; more slots take more rounds. */
+const MAX_HAND = 6;
 const QUICK_HAND = 4;
-const RESERVE_PER_HAND = 2;
+const MAX_PICKS = 3;
+const RESERVE_PER_HAND = 1;
 
-/** Cards dealt for `needed` slots: two per slot, so each player has a real choice. */
-export const handSize = (mode: GameMode, needed: number) =>
-  mode === "quick" ? QUICK_HAND : Math.min(MAX_HAND, Math.max(needed * 2, needed + 2));
+/** How many cards each player picks this round, for `needed` empty slots. */
+export const picksPerRound = (needed: number) => Math.min(needed, MAX_PICKS);
+
+/** Cards dealt for a round of `picks` picks: about two per pick, so each player has a real choice. */
+export const handSize = (mode: GameMode, picks: number) =>
+  picks <= 0 ? 0 : mode === "quick" ? QUICK_HAND : Math.min(MAX_HAND, Math.max(picks * 2, picks + 2));
 
 /**
  * The slots a game fills. A plan game takes the empty slots of the chosen moments from today on;
@@ -94,8 +98,8 @@ export function dealCards({ mode, options, count, exclude, nextId, random, reser
   const free = (mealIds: number[]) =>
     mealIds.every((id) => known.has(id) && !taken.has(id) && statusFits(options.status, known.get(id)!.status)) && fits(mealIds);
 
-  // envies communes: the oldest first, at most a quarter of the hand
-  const reserveSlots = reserve ?? Math.min(RESERVE_PER_HAND, Math.floor(count / 4));
+  // envies communes: the oldest first, one per hand at most
+  const reserveSlots = reserve ?? Math.min(RESERVE_PER_HAND, Math.floor(count / 3));
   for (const entry of readReserve().filter((r) => free(r.mealIds)).slice(0, reserveSlots)) add(entry.mealIds, "reserve");
 
   // nouveau: meals to try first, then never cooked, then the assistant's ideas

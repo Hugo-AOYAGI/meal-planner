@@ -3,12 +3,15 @@ import type { GameAction, GameCard, GameOptions, GameStart } from "@shared/schem
 import type { Random } from "../calc/draw";
 import { AppError } from "../support/errors";
 import { getSettings } from "../support/settings";
-import { dealCards, handSize, slotKey, slotsFor } from "./deal";
+import { dealCards, handSize, picksPerRound, slotKey, slotsFor } from "./deal";
 import { refuse, validate } from "./finish";
 import { addToReserve, currentGame, setGame, type Game } from "./store";
 
 const mealIdsOf = (cards: GameCard[]) => cards.flatMap((c) => c.meals.map((m) => m.id));
 export const needed = (game: Game) => Math.max(0, game.slots.length - game.matches.length);
+/** How many cards each player picks this round. */
+export const toPick = (game: Game) => picksPerRound(needed(game));
+const roundHand = (game: Game) => handSize(game.mode, toPick(game));
 const cardsById = (game: Game, ids: string[]) => game.hand.filter((c) => ids.includes(c.id));
 
 function deal(game: Game, count: number): GameCard[] {
@@ -24,7 +27,14 @@ export function toAnswer(game: Game, player: string): GameCard[] {
 }
 
 /** Starts the household's game, or returns the one running (joining it). */
+/** Once the household has declared its members, only they play. */
+function checkPlayer(player: string): void {
+  const members = getSettings().members;
+  if (members.length && !members.some((m) => m.id === player)) throw new AppError("Joueur inconnu : choisissez qui joue.", 409);
+}
+
 export function startGame({ player, mode, options }: GameStart, random: Random = Math.random): Game {
+  checkPlayer(player);
   const running = currentGame();
   if (running && running.phase !== "done") {
     if (!running.players.includes(player)) join(running, player);
@@ -45,7 +55,7 @@ export function startGame({ player, mode, options }: GameStart, random: Random =
     slots: slotsFor(mode, full), hand: [], picks: { [player]: [] }, ready: {}, answers: {}, matches: [], fresh: [],
     revertible: null, refused: [], skipped: [], placement: {}, exhausted: false, touched: Date.now(), seq: 0, random,
   };
-  game.hand = deal(game, handSize(mode, game.slots.length));
+  game.hand = deal(game, roundHand(game));
   game.exhausted = !game.hand.length;
   setGame(game);
   return game;
@@ -83,7 +93,7 @@ function nextRound(game: Game): void {
   game.skipped = mealIdsOf(game.hand);
   game.round++;
   game.hand = [];
-  game.hand = deal(game, handSize(game.mode, needed(game)));
+  game.hand = deal(game, roundHand(game));
   game.skipped = [];
   for (const p of game.players) {
     game.picks[p] = [];
@@ -141,10 +151,10 @@ function changeOptions(game: Game, change: Extract<GameAction, { type: "options"
     game.matches = game.matches.slice(0, game.slots.length);
   }
   if (game.phase !== "picking") return void (needed(game) ? nextRound(game) : toPlacing(game));
-  const n = needed(game);
+  const n = toPick(game);
   const picked = new Set(Object.values(game.picks).flat());
   if (statusChanged) game.hand = game.hand.filter((c) => picked.has(c.id));
-  const target = handSize(game.mode, n);
+  const target = roundHand(game);
   if (game.hand.length < target) game.hand.push(...deal(game, target - game.hand.length));
   while (game.hand.length > target) {
     const spare = game.hand.findLastIndex((c) => !picked.has(c.id));
@@ -166,6 +176,7 @@ function expect(game: Game, ...phases: Game["phase"][]): void {
 export function act(player: string, action: GameAction): Game | null {
   const game = currentGame();
   if (!game) throw new AppError("Aucun tirage en cours.", 404);
+  checkPlayer(player);
   if (action.type === "join") join(game, player);
   else if (!game.players.includes(player)) throw new AppError("Rejoignez d’abord le tirage.", 409);
   switch (action.type) {
@@ -173,7 +184,7 @@ export function act(player: string, action: GameAction): Game | null {
       expect(game, "picking");
       if (!game.hand.some((c) => c.id === action.card)) throw new AppError("Carte inconnue.");
       const picks = game.picks[player]!;
-      const n = needed(game);
+      const n = toPick(game);
       if (picks.includes(action.card)) picks.splice(picks.indexOf(action.card), 1);
       else if (picks.length < n) picks.push(action.card);
       else if (n === 1) picks.splice(0, 1, action.card);
@@ -201,7 +212,7 @@ export function act(player: string, action: GameAction): Game | null {
       expect(game, "picking");
       game.skipped = mealIdsOf(game.hand);
       game.hand = [];
-      game.hand = deal(game, handSize(game.mode, needed(game)));
+      game.hand = deal(game, roundHand(game));
       game.skipped = [];
       for (const p of game.players) {
         game.picks[p] = [];

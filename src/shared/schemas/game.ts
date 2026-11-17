@@ -52,8 +52,10 @@ export const gameViewSchema = z.object({
   players: z.array(z.object({ id: playerIdSchema, ready: z.boolean(), picked: z.number().int() })),
   /** slots this game fills, in order: only those that need a meal */
   slots: z.array(slotRefSchema),
-  /** how many cards each player picks this round (slots still without a match) */
+  /** slots still without a match */
   needed: z.number().int(),
+  /** cards each player picks this round (a hand fits a screen: big plans take several rounds) */
+  toPick: z.number().int(),
   hand: z.array(gameCardSchema),
   myPicks: z.array(z.string()),
   /** catch-up: the other's unmatched picks, for me to accept or refuse; my answers so far */

@@ -49,7 +49,7 @@ export function GameCardTile({ card, picked = false, onToggle, className, childr
   );
   const style = { backgroundColor: colorOf(card) };
   const base = cn(
-    "flex min-h-24 flex-col justify-between gap-2 rounded-xl p-3 text-left transition-[outline-color,transform]",
+    "flex min-h-[4.5rem] flex-col justify-between gap-1 rounded-xl px-3 py-2.5 text-left transition-[outline-color,transform]",
     picked ? "outline-3 outline-foreground" : "outline-3 outline-transparent",
     className,
   );

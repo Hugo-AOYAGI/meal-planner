@@ -4,6 +4,7 @@ import type { GameCard, GameMode, GameOptions, GamePhase } from "@shared/schemas
 import { db } from "../../db";
 import { setting } from "../../db/schema";
 import type { Random } from "../calc/draw";
+import { getSettings } from "../support/settings";
 import type { GameSlot } from "./deal";
 
 /** A game in progress. It lives in memory only: a server restart ends it. */
@@ -41,9 +42,11 @@ const IDLE_MS = 30 * 60_000;
 let current: Game | null = null;
 const listeners = new Set<(gameId: string) => void>();
 
-/** The household's game, unless it has been idle too long. */
+/** The household's game, unless it has been idle too long or a player is no longer a member. */
 export function currentGame(): Game | null {
   if (current && Date.now() - current.touched > IDLE_MS) current = null;
+  const members = getSettings().members;
+  if (current && members.length && current.players.some((p) => !members.some((m) => m.id === p))) current = null;
   return current;
 }
 

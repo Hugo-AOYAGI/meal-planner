@@ -48,7 +48,7 @@ export function DrawDialog({ session }: { session: GameSession }) {
   const quick = (session.view ?? session.running)?.mode === "quick";
   return (
     <Dialog open={session.open} onOpenChange={session.setOpen}>
-      <DialogContent className="gap-4 sm:max-w-xl" aria-describedby={undefined}>
+      <DialogContent className="gap-3 sm:max-w-xl" aria-describedby={undefined}>
         <DialogTitle className="display text-2xl">{quick ? "🌙 Un repas pour ce soir" : "Tirage"}</DialogTitle>
         <GameBody session={session} />
       </DialogContent>

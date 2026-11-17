@@ -7,8 +7,8 @@ import { memberColor } from "./IdentityPicker";
 
 /** What a player is doing, as far as the others may know. */
 function statusOf(view: GameView, player: GameView["players"][number]): string {
-  if (view.phase === "picking") return player.ready ? "a fini ✓" : "choisit…";
-  if (view.phase === "catchup") return "répond…";
+  if (view.phase === "picking") return player.ready ? "✓" : "…";
+  if (view.phase === "catchup") return "…";
   return "";
 }
 
@@ -28,11 +28,10 @@ export function GameHeader({ session, view }: { session: GameSession; view: Game
             return (
               <li
                 key={player.id}
-                className="flex min-h-8 items-center gap-1.5 rounded-full px-3 text-sm font-bold"
+                className={`flex min-h-8 items-center gap-1 rounded-full px-3 text-sm font-bold ${player.id === view.me && view.players.length > 1 ? "outline-2 outline-foreground" : ""}`}
                 style={{ backgroundColor: memberColor(member) }}
               >
                 {member.name}
-                {player.id === view.me && view.players.length > 1 && <span className="text-dim">(toi)</span>}
                 {doing && <span className="font-semibold text-dim">{doing}</span>}
               </li>
             );
@@ -52,11 +51,9 @@ export function GameHeader({ session, view }: { session: GameSession; view: Game
             <button type="button" className={`${menuItem} text-destructive`} onClick={() => session.act({ type: "abandon" })}>
               Abandonner le tirage
             </button>
-            {!session.identity.noMembers && (
-              <button type="button" className={menuItem} onClick={session.forget}>
-                Je ne suis pas {memberOf(view.me).name}
-              </button>
-            )}
+            <button type="button" className={menuItem} onClick={session.forget}>
+              Je ne suis pas {memberOf(view.me).name}
+            </button>
           </PopoverContent>
         </Popover>
       </div>

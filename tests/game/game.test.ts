@@ -113,12 +113,46 @@ test("changing the duration adapts the slots and the hand instead of starting ov
   act("a", { type: "pick", card: first[0]! });
   act("a", { type: "options", options: { days: 4 } });
   expect(game.slots).toHaveLength(4);
-  expect(game.hand).toHaveLength(8);
+  expect(game.hand).toHaveLength(6);
   expect(game.hand.slice(0, 4).map((c) => c.id)).toEqual(first);
   expect(game.picks.a).toEqual([first[0]!]);
   act("a", { type: "options", options: { days: 1 } });
   expect(game.hand).toHaveLength(3);
   expect(game.hand.map((c) => c.id)).toContain(first[0]!);
+});
+
+test("a long plan fits the screen: at most 6 cards and 3 picks a round, then another round", () => {
+  const game = start(5);
+  expect(game.hand).toHaveLength(6);
+  expect(viewFor(game, "a").toPick).toBe(3);
+  const ids = game.hand.map((c) => c.id);
+  for (const id of ids.slice(0, 3)) act("a", { type: "pick", card: id });
+  expect(() => act("a", { type: "pick", card: ids[3]! })).toThrow();
+  act("a", { type: "ready", ready: true });
+  expect(game.phase).toBe("picking");
+  expect(game.round).toBe(2);
+  expect(viewFor(game, "a").toPick).toBe(2);
+  expect(game.hand).toHaveLength(4);
+  expect(game.hand.some((c) => ids.includes(c.id))).toBe(false);
+});
+
+test("once members are declared, only they play, and a game started by someone else is dropped", () => {
+  start(1, "moi");
+  updateSettings({ members: [{ id: "a", name: "A", color: "sun" }, { id: "b", name: "B", color: "sky" }] });
+  expect(currentGame()).toBeNull();
+  expect(() => start(1, "moi")).toThrow();
+  expect(start(1, "a").players).toEqual(["a"]);
+  updateSettings({ members: [] });
+});
+
+test("with every slot already planned, nothing is dealt until the duration grows", () => {
+  const from = addDays(today(), (offset += 10));
+  setSlot({ date: from, moment: "soir", entries: [{ mealId: 1 }] });
+  const game = startGame({ player: "a", mode: "plan", options: { from, days: 1, moments: ["soir"] } }, seeded(offset));
+  expect(game.slots).toEqual([]);
+  expect(game.hand).toEqual([]);
+  act("a", { type: "options", options: { days: 3 } });
+  expect(game.hand).toHaveLength(4);
 });
 
 test("filled slots are not drawn, and a start while a game runs joins it", () => {

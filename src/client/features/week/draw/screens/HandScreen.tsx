@@ -4,27 +4,22 @@ import { Button } from "@/components/ui/actions/button";
 import { GameCardTile } from "../cards/GameCardTile";
 import type { GameSession } from "../use-game-session";
 
-/** While alone: who may still join, playing on the same phone, or a hint to declare members. */
+/** While alone: who may still join, or playing on the same phone. */
 function AloneHint({ session, view }: { session: GameSession; view: GameView }) {
   const { identity } = session;
-  if (identity.noMembers)
-    return <p className="text-xs text-dim">Pour jouer à deux, ajoutez les membres du foyer dans Foyer.</p>;
   const others = identity.members.filter((m) => !view.players.some((p) => p.id === m.id));
-  if (!others.length) return null;
+  if (!others.length)
+    return <p className="text-xs text-dim">À deux ? L’autre touche « Tirer » sur son téléphone pour rejoindre.</p>;
   const names = others.map((m) => m.name).join(" ou ");
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-subtle p-3">
-      <p className="text-sm font-bold">
-        En attente de {names}… <span className="font-semibold text-dim">ou valide seul.</span>
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {others.map((member) => (
-          <Button key={member.id} variant="secondary" size="sm" className="bg-background" onClick={() => session.playTogether(member.id)}>
-            <Smartphone />
-            {others.length > 1 ? `Avec ${member.name} sur ce téléphone` : "À deux sur ce téléphone"}
-          </Button>
-        ))}
-      </div>
+    <div className="flex items-center gap-2">
+      <p className="min-w-0 flex-1 text-xs font-semibold text-dim">{names} peut rejoindre depuis son téléphone, ou :</p>
+      {others.map((member) => (
+        <Button key={member.id} variant="secondary" size="sm" className="shrink-0" onClick={() => session.playTogether(member.id)}>
+          <Smartphone />
+          {others.length > 1 ? `Avec ${member.name} ici` : "À deux ici"}
+        </Button>
+      ))}
     </div>
   );
 }
@@ -39,7 +34,11 @@ export function HandScreen({ session, view }: { session: GameSession; view: Game
   if (!view.hand.length)
     return (
       <div className="flex flex-col gap-3">
-        <p className="font-bold">Plus rien à proposer pour ces jours et ces filtres.</p>
+        <p className="font-bold">
+          {view.slots.length
+            ? "Plus rien à proposer pour ces jours et ces filtres."
+            : "Tout est déjà prévu sur ces jours : allonge la durée ou ajoute un moment."}
+        </p>
         {view.round > 1 && (
           <Button onClick={() => session.act({ type: "finish" })}>Finir avec ce qu’on a</Button>
         )}
@@ -50,20 +49,24 @@ export function HandScreen({ session, view }: { session: GameSession; view: Game
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
         <p className="font-bold">
-          {view.round > 1 ? "Encore " : "Choisis "}
-          {view.needed} {view.needed === 1 ? "plat" : "plats"}
+          Choisis {view.toPick > 1 ? `jusqu’à ${view.toPick} plats` : "1 plat"}
           {!alone && <span className="font-semibold text-dim"> · en secret</span>}
+          {(view.needed > view.toPick || view.round > 1) && (
+            <span className="block text-xs font-semibold text-dim">
+              Manche {view.round} · {view.needed} repas à trouver
+            </span>
+          )}
         </p>
-        <span className="display text-2xl tabular-nums" aria-label={`${picked} sur ${view.needed}`}>
-          {picked} / {view.needed}
+        <span className="display text-2xl tabular-nums" aria-label={`${picked} sur ${view.toPick}`}>
+          {picked} / {view.toPick}
         </span>
       </div>
-      <div className="grid max-h-[42dvh] grid-cols-2 gap-2 overflow-y-auto p-1 md:max-h-[52vh]">
+      <div className="grid grid-cols-2 gap-2 p-0.5">
         {view.hand.map((card) => (
           <GameCardTile key={card.id} card={card} picked={view.myPicks.includes(card.id)} onToggle={() => toggle(card.id)} />
         ))}
       </div>
-      {alone && <AloneHint session={session} view={view} />}
+      {alone && view.round === 1 && <AloneHint session={session} view={view} />}
       <div className="flex flex-wrap gap-2">
         <Button
           className="h-11 min-w-28 flex-1 text-base sm:flex-none"
@@ -75,12 +78,12 @@ export function HandScreen({ session, view }: { session: GameSession; view: Game
         </Button>
         <Button variant="outline" className="h-11" disabled={session.busy} onClick={() => session.act({ type: "reroll" })}>
           <Dices />
-          Tout relancer
+          Relancer
         </Button>
         {view.round > 1 && (
           <Button variant="ghost" className="h-11" disabled={session.busy} onClick={() => session.act({ type: "finish" })}>
             <Flag />
-            Finir avec ce qu’on a
+            Finir
           </Button>
         )}
       </div>

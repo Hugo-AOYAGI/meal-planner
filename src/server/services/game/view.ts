@@ -1,6 +1,6 @@
 import type { GameView } from "@shared/schemas";
 import { slotKey } from "./deal";
-import { needed, toAnswer } from "./rules";
+import { needed, toAnswer, toPick } from "./rules";
 import type { Game } from "./store";
 
 /** What `player` may see of the game: their own picks and answers, only counts of the other's before the reveal. */
@@ -16,6 +16,7 @@ export function viewFor(game: Game, player: string): GameView {
     players: game.players.map((id) => ({ id, ready: !!game.ready[id], picked: game.picks[id]?.length ?? 0 })),
     slots: game.slots.map(({ date, moment }) => ({ date, moment })),
     needed: needed(game),
+    toPick: game.phase === "picking" ? toPick(game) : 0,
     hand: game.hand,
     myPicks: game.picks[player] ?? [],
     toAnswer: game.phase === "catchup" ? toAnswer(game, player) : [],
