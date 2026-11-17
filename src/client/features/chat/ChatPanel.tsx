@@ -1,4 +1,4 @@
-import { HistoryIcon, MessageSquareIcon, XIcon } from "lucide-react";
+import { HistoryIcon, MessageSquareIcon, Undo2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/actions/button";
 import { AssistantPicker } from "@/features/chat/composer/AssistantPicker";
@@ -9,7 +9,7 @@ import { useChatSession } from "@/features/chat/session/use-chat-session";
 
 /** The assistant. Fills its container: header, scrolling messages (or the history list), input pinned at the bottom. */
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
-  const { messages, status, busy, queued, error, conversationId, send, stop, reset, open } = useChatSession();
+  const { messages, status, busy, queued, error, conversationId, resumable, send, stop, reset, open } = useChatSession();
   const [history, setHistory] = useState(false);
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-background">
@@ -59,6 +59,18 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
       {/* kept mounted behind the history so a half-typed message survives */}
       <div className={history ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
         <MessageList messages={messages} status={status} queued={queued} />
+        {resumable && (
+          <button
+            type="button"
+            onClick={() => void open(resumable.id)}
+            className="mx-3 mb-2 flex min-h-11 items-center gap-2 rounded-md px-2 text-left text-xs text-dim outline-none hover:bg-subtle hover:text-foreground focus-visible:bg-subtle"
+          >
+            <Undo2Icon className="size-4 shrink-0" />
+            <span className="min-w-0 truncate">
+              Reprendre : <span className="font-semibold text-foreground">{resumable.title}</span>
+            </span>
+          </button>
+        )}
         {error && (
           <p role="alert" className="px-3 pb-2 text-xs text-destructive">
             {error}
