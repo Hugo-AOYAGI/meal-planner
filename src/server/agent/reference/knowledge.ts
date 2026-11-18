@@ -2,14 +2,14 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
-const legacyDirectory = () => resolve(
+export const legacyReferenceDirectory = () => resolve(
   process.env.MEAL_PLANNER_FOOD_LAB_DIR ?? join(homedir(), "Downloads", "The Food Lab", "agent-reader"),
 );
 
 export function knowledgeDirectory() {
   if (process.env.MEAL_PLANNER_KNOWLEDGE_DIR) return resolve(process.env.MEAL_PLANNER_KNOWLEDGE_DIR);
   const directory = resolve("data/knowledge");
-  return existsSync(directory) ? directory : legacyDirectory();
+  return existsSync(directory) ? directory : legacyReferenceDirectory();
 }
 
 function readText(path: string) {
@@ -30,8 +30,10 @@ export function readReference(id: string, directory = knowledgeDirectory()) {
 
 /** Old messages already contain this book's original citation prefix. */
 export function readLegacyReference(id: string) {
-  return readReference(id, legacyDirectory());
+  return readReference(id, legacyReferenceDirectory());
 }
+
+export const referenceTitle = (markdown: string, id: string) => /^# +(.+)/m.exec(markdown)?.[1]?.trim() || id;
 
 const tokens = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
 
@@ -73,7 +75,7 @@ export function searchReferences({ query, chapter_id, limit, offset }: SearchOpt
     if (chapter_id && chapter !== chapter_id) continue;
     const markdown = readReference(id, directory);
     if (!markdown) continue;
-    const title = /^#\s+(.+)/m.exec(markdown)?.[1]?.trim() ?? id;
+    const title = referenceTitle(markdown, id);
     const metadata = { id, title, chapter_id: chapter };
     if (terms.length === 0) {
       if (!query.trim()) ranked.push({ score: 0, result: metadata });

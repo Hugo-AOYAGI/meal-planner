@@ -6,6 +6,7 @@ import { appendMessages, deleteConversation, getOrCreateConversation, listConver
 import { emitChanged, emitChat } from "../events";
 import { getSettings } from "../services/support/settings";
 import { readLegacyReference, readReference } from "./reference/knowledge";
+import { saveReference } from "./reference/save";
 import { follow, isBusy, liveRun, queueRun, stopRuns } from "./runtime/live-run";
 import { runTurn } from "./runtime/providers";
 import type { RunInput } from "./runtime/run";
@@ -38,6 +39,11 @@ export const chatRoute = new Hono()
     return markdown === undefined
       ? c.text("Section introuvable.", 404)
       : c.text(markdown);
+  })
+  .post("/:source{reference|food-lab}/:id/save", (c) => {
+    const source = c.req.param("source") === "reference" ? "reference" : "food-lab";
+    const result = saveReference({ source, id: c.req.param("id") });
+    return result ? c.json({ id: result.id }) : c.json({ error: "Section introuvable." }, 404);
   })
   .post("/", zValidator("json", bodySchema), (c) => {
     const { conversationId, messages } = c.req.valid("json");

@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, Pencil, Plus, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MEAL_KIND_LABELS } from "@shared/constants";
+import { parseReferenceHref } from "@shared/references/links";
 import { Overlay } from "@/components/overlays/Overlay";
 import { TextTabs } from "@/components/layout/TextTabs";
 import { Button } from "@/components/ui/actions/button";
@@ -12,6 +13,7 @@ import { useMeal, useSettings } from "@/lib/api/queries";
 import { MealEditForm } from "@/features/meals/editor/MealEditForm";
 import { PlanPicker } from "@/features/meals/panels/PlanPicker";
 import { RecipeView } from "@/features/meals/detail/RecipeView";
+import { ReferenceReader } from "@/features/chat/messages/ReferenceReader";
 
 interface MealDetailProps {
   id: number;
@@ -31,8 +33,10 @@ export function MealDetail({ id, recipeId: initialRecipeId = null, servings, onC
   const [mode, setMode] = useState<Mode>("view");
   const [recipeId, setRecipeId] = useState<number | null>(initialRecipeId);
   const [planning, setPlanning] = useState(false);
-  const markRegular = useMutation({
-    mutationFn: () => unwrap(api.meals[":id"].$patch({ param: { id: String(id) }, json: { status: "regular" } })),
+  const [readingReference, setReadingReference] = useState(false);
+  const referenceLink = useRef<HTMLAnchorElement>(null);
+  const changeStatus = useMutation({
+    mutationFn: (status: "regular" | "to_try") => unwrap(api.meals[":id"].$patch({ param: { id: String(id) }, json: { status } })),
     onSuccess: () => invalidate.meals(qc),
   });
 
@@ -42,6 +46,7 @@ export function MealDetail({ id, recipeId: initialRecipeId = null, servings, onC
   });
 
   if (!meal) return <Skeleton className="m-4 h-40" />;
+  const reference = parseReferenceHref(meal.notes);
   const recipe = meal.recipes.find((r) => r.id === recipeId) ?? meal.recipes[0] ?? null;
   const people = servings ?? householdSize ?? recipe?.servings ?? 4;
   const cooked = meal.timesCooked === 0 ? "jamais cuisiné" : `cuisiné ${meal.timesCooked} fois`;
@@ -77,11 +82,9 @@ export function MealDetail({ id, recipeId: initialRecipeId = null, servings, onC
             <Pencil />
             Modifier
           </Button>
-          {meal.status === "to_try" && (
-            <Button variant="ghost" size="sm" disabled={markRegular.isPending} onClick={() => markRegular.mutate()}>
-              À essayer → habituel
-            </Button>
-          )}
+          <Button variant="ghost" size="sm" disabled={changeStatus.isPending} onClick={() => changeStatus.mutate(meal.status === "to_try" ? "regular" : "to_try")}>
+            {meal.status === "to_try" ? "À essayer → habituel" : "Mettre dans « À essayer »"}
+          </Button>
         </div>
       )}
     </div>
@@ -116,7 +119,17 @@ export function MealDetail({ id, recipeId: initialRecipeId = null, servings, onC
     <>
       {header}
       <div className="flex flex-col gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        {meal.notes && <p className="text-xs text-muted-foreground">{meal.notes}</p>}
+        {reference ? (
+          <>
+            <a ref={referenceLink} href={meal.notes ?? undefined} className="self-start text-sm font-bold underline underline-offset-3" onClick={(event) => {
+              event.preventDefault();
+              setReadingReference(true);
+            }}>
+              Ouvrir la recette d’origine
+            </a>
+            <ReferenceReader target={readingReference ? reference : null} onClose={() => setReadingReference(false)} returnFocus={referenceLink} canSave={false} />
+          </>
+        ) : meal.notes && <p className="text-xs text-muted-foreground">{meal.notes}</p>}
         {recipe ? (
           <>
             <div className="flex items-end gap-3">

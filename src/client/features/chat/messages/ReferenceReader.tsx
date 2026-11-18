@@ -1,11 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RefObject } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/overlays/dialog";
-import { Markdown, type ReferenceTarget } from "./Markdown";
+import { Button } from "@/components/ui/actions/button";
+import { clientId, unwrap } from "@/lib/api/api";
+import { invalidate } from "@/lib/api/query";
+import type { ReferenceTarget } from "@shared/references/links";
+import { Markdown } from "./Markdown";
 
-export function ReferenceReader({ target, onClose, returnFocus }: {
-  target: ReferenceTarget | null; onClose: () => void; returnFocus: RefObject<HTMLAnchorElement | null>;
+export function ReferenceReader({ target, onClose, returnFocus, canSave = true }: {
+  target: ReferenceTarget | null; onClose: () => void; returnFocus: RefObject<HTMLAnchorElement | null>; canSave?: boolean;
 }) {
+  const qc = useQueryClient();
+  const save = useMutation({
+    mutationFn: ({ source, id }: ReferenceTarget) => unwrap(fetch(`/api/chat/${source}/${encodeURIComponent(id)}/save`, {
+      method: "POST", headers: { "x-client-id": clientId },
+    })),
+    onSuccess: () => invalidate.meals(qc),
+  });
+  const saved = save.isSuccess && save.variables === target;
   const section = useQuery({
     queryKey: ["reference-section", target?.source, target?.id],
     enabled: target !== null,
@@ -22,7 +34,12 @@ export function ReferenceReader({ target, onClose, returnFocus }: {
   });
 
   return (
-    <Dialog open={target !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open={target !== null} onOpenChange={(open) => {
+      if (!open) {
+        save.reset();
+        onClose();
+      }
+    }}>
       <DialogContent
         aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
@@ -38,6 +55,13 @@ export function ReferenceReader({ target, onClose, returnFocus }: {
           {section.isError && <p role="alert" className="pb-3">{section.error.message}</p>}
           {section.data && <Markdown>{section.data}</Markdown>}
         </div>
+        {canSave && target && section.data && (
+          <div className="shrink-0 border-t border-border px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <Button disabled={save.isPending || saved} onClick={() => save.mutate(target)}>
+              {saved ? "Ajouté à « À essayer »" : save.isPending ? "Ajout en cours…" : "Ajouter à « À essayer »"}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
