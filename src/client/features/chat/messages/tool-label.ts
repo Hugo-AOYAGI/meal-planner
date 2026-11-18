@@ -5,9 +5,9 @@ const query = (i: Record<string, unknown>) => i.q;
 
 /** Short French labels per tool. */
 const TOOLS: Record<string, Info> = {
-  mcp__food_lab__search_sections: { running: "Consultation du sommaire de The Food Lab", done: "Sommaire de The Food Lab consulté", detail: (i) => i.query },
-  mcp__food_lab__search: { running: "Recherche dans The Food Lab", done: "Recherche dans The Food Lab", detail: (i) => i.query },
-  mcp__food_lab__read_section: { running: "Lecture de The Food Lab", done: "Section de The Food Lab lue" },
+  search_sections: { running: "Consultation du sommaire", done: "Sommaire consulté", detail: (i) => i.query },
+  search: { running: "Recherche dans les références", done: "Recherche dans les références", detail: (i) => i.query },
+  read_section: { running: "Lecture d’une référence", done: "Référence lue" },
   list_meals: { running: "Recherche de repas", done: "Repas recherchés", detail: query },
   suggest_meals: { running: "Recherche d’idées de repas", done: "Idées de repas trouvées" },
   get_meal: { running: "Lecture d'un repas", done: "Repas lu" },
@@ -54,7 +54,7 @@ export function mealIdOf(toolName: string, output: unknown): number | undefined 
 
 export function toolLabel(toolName: string, input: unknown, state: "running" | "done" | "error", errorText?: string) {
   const key = toolName.replace("mcp__app__", "");
-  const info = TOOLS[key];
+  const info = TOOLS[key.replace(/^mcp__food_lab__/, "")];
   const label = (state === "done" ? info?.done : info?.running) ?? (state === "done" ? "Action terminée" : "Action de l’assistant");
   const raw = input && typeof input === "object" ? info?.detail?.(input as Record<string, unknown>) : undefined;
   const detail = typeof raw === "string" && raw ? raw : undefined;

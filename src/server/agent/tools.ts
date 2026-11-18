@@ -1,5 +1,6 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
+import { readReference, searchReferences } from "./reference/knowledge";
 import {
   ciqualSearchQuerySchema,
   dateSchema,
@@ -86,7 +87,22 @@ const WEEK = dateSchema.describe("N'importe quel jour de la semaine voulue (YYYY
 /** The shopping list's period. */
 const DAYS = shoppingDaysSchema.describe("Nombre de jours couverts par la liste, à partir d'aujourd'hui (7 par défaut)");
 
+const referenceSearchSchema = z.object({
+  query: z.string().trim().max(180).default(""),
+  chapter_id: z.string().max(200).optional(),
+  limit: z.number().int().min(1).max(25).default(12),
+  offset: z.number().int().nonnegative().default(0),
+});
+
 export const appTools = [
+  define("search_sections", "Parcourt les sections des références locales ou cherche dans leurs titres. chapter_id filtre par chapitre.", referenceSearchSchema, (input) => searchReferences(input, true)),
+  define("search", "Recherche par mots-clés dans les titres et le texte des références locales. Renvoie des extraits et les identifiants à lire.", referenceSearchSchema.extend({ query: z.string().trim().min(1).max(180) }), (input) => searchReferences(input, false)),
+  define("read_section", "Lit une section Markdown des références locales à partir de son identifiant exact.", z.object({ section_id: z.string().min(1).max(200) }), ({ section_id }) => {
+    const markdown = readReference(section_id);
+    return markdown === undefined
+      ? { error: "Section introuvable. Vérifie l’identifiant avec search_sections." }
+      : { id: section_id, href: `#reference/${section_id}`, markdown };
+  }),
   define(
     "list_meals",
     "Recherche les repas de la bibliothèque. q : mots qui doivent chacun apparaître dans le nom du repas ou dans un de ses ingrédients (« poulet riz ») ; excludes : ingrédients à éviter (« arachide, champignon »). Filtres de type et de statut.",
