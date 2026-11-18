@@ -3,8 +3,11 @@ type Info = { running: string; done: string; detail?: (input: Record<string, unk
 const name = (i: Record<string, unknown>) => i.name;
 const query = (i: Record<string, unknown>) => i.q;
 
-/** Short French labels per tool (the `mcp__app__` prefix is stripped). */
+/** Short French labels per tool. */
 const TOOLS: Record<string, Info> = {
+  mcp__food_lab__search_sections: { running: "Consultation du sommaire de The Food Lab", done: "Sommaire de The Food Lab consulté", detail: (i) => i.query },
+  mcp__food_lab__search: { running: "Recherche dans The Food Lab", done: "Recherche dans The Food Lab", detail: (i) => i.query },
+  mcp__food_lab__read_section: { running: "Lecture de The Food Lab", done: "Section de The Food Lab lue" },
   list_meals: { running: "Recherche de repas", done: "Repas recherchés", detail: query },
   get_meal: { running: "Lecture d'un repas", done: "Repas lu" },
   create_meal: { running: "Création du repas", done: "Repas créé", detail: name },
