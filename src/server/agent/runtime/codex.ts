@@ -6,18 +6,20 @@ import type { UIMessageChunk } from "ai";
 import { DB_PATH } from "../../db";
 import { toolOutput } from "../bridge";
 import { systemPrompt } from "../prompt";
+import { foodLabReference } from "../reference/food-lab";
 import { agentDir, type RunInput } from "./run";
 
 export const CODEX_MODEL = process.env.MEAL_PLANNER_CODEX_MODEL ?? "gpt-6.1-terra";
 
 /**
  * Codex runs as its own process: it reaches the app tools through the stdio MCP server, pre-approved.
- * Shell, plugins, apps and hooks are off, so like Claude it only has the app tools and web search.
+ * Shell, plugins, apps and hooks are off, so tools come from the configured MCP servers and web search.
  */
-const codex = () =>
-  new Codex({
+const codex = () => {
+  const foodLab = foodLabReference();
+  return new Codex({
     config: {
-      developer_instructions: systemPrompt(),
+      developer_instructions: systemPrompt(foodLab?.contents),
       mcp_servers: {
         app: {
           command: process.execPath,
@@ -25,6 +27,7 @@ const codex = () =>
           env: { DB_PATH: resolve(DB_PATH) },
           default_tools_approval_mode: "approve",
         },
+        ...(foodLab ? { food_lab: { ...foodLab.server, default_tools_approval_mode: "approve" } } : {}),
       },
       features: {
         shell_tool: false,
@@ -34,6 +37,7 @@ const codex = () =>
       },
     },
   });
+};
 
 /** Codex reads images from disk: they are written next to the session and removed after the turn. */
 function writeImages(images: RunInput["images"]): {

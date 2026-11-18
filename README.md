@@ -69,10 +69,14 @@ Environment variables read by the code:
 | `DB_PATH` | `data/meal-planner.db` | SQLite file. `:memory:` is used by the tests. |
 | `MEAL_PLANNER_MODEL` | `claude-sonnet-5-5` | Model used by the Claude assistant. |
 | `MEAL_PLANNER_CODEX_MODEL` | `gpt-6.1-terra` | Model used by the Codex assistant. |
+| `MEAL_PLANNER_FOOD_LAB_DIR` | `~/Downloads/The Food Lab/agent-reader` | Local Food Lab reader directory, with `reader.py`, `catalog.json`, `sections/`, and `TABLE-OF-CONTENTS.md`. |
+| `MEAL_PLANNER_FOOD_LAB_UV` | `~/.local/bin/uv` or `uv` on PATH | uv executable used to launch the local reader. |
 | `ANTHROPIC_API_KEY` | unset | If set, the Claude assistant bills the API; otherwise it uses the machine's Claude login. |
 | `MEAL_PLANNER_BACKGROUND` | on | `off` disables the assistant's background jobs (recipe durations for the quick draw, new-dish ideas for the draw), which otherwise run 5 minutes after start and every night at 03:30. |
 
 The assistant, household size (default servings, default 2), which moments the draw fills (default dinner), the draw's players and the quick draw's time limit (default 25 min) are set in the app, under the Foyer settings, and stored in the database.
+
+When the local reader is installed on the app host, both chat assistants use The Food Lab for cooking questions. The compact table of contents goes in the main prompt and the full sections are read on demand. Keep the book files together on the host and point `MEAL_PLANNER_FOOD_LAB_DIR` there if using a different location.
 
 ## Data and backups
 

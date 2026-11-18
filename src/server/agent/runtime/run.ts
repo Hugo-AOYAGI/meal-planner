@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { query, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { DB_PATH } from "../../db";
 import { systemPrompt } from "../prompt";
+import { foodLabReference } from "../reference/food-lab";
 import { appServer } from "../tools";
 
 export type RunInput = {
@@ -40,6 +41,7 @@ async function* userMessage({ text, images }: RunInput): AsyncGenerator<SDKUserM
 }
 
 function start(input: RunInput, resume: string | null) {
+  const foodLab = foodLabReference();
   const abortController = new AbortController();
   input.signal.addEventListener("abort", () => abortController.abort(), { once: true });
   return query({
@@ -47,10 +49,13 @@ function start(input: RunInput, resume: string | null) {
     options: {
       model: process.env.MEAL_PLANNER_MODEL ?? "claude-sonnet-5-5",
       effort: "medium",
-      systemPrompt: systemPrompt(),
+      systemPrompt: systemPrompt(foodLab?.contents),
       tools: ["WebSearch", "WebFetch"],
-      allowedTools: ["WebSearch", "WebFetch", "mcp__app__*"],
-      mcpServers: { app: appServer },
+      allowedTools: [
+        "WebSearch", "WebFetch", "mcp__app__*",
+        ...(foodLab ? ["mcp__food_lab__search_sections", "mcp__food_lab__search", "mcp__food_lab__read_section"] : []),
+      ],
+      mcpServers: { app: appServer, ...(foodLab ? { food_lab: foodLab.server } : {}) },
       permissionMode: "dontAsk",
       settingSources: [],
       strictMcpConfig: true,
