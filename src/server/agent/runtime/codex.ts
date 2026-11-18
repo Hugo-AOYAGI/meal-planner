@@ -61,12 +61,13 @@ function writeImages(images: RunInput["images"]): {
   };
 }
 
-/** One thread item as UI chunks. Tool calls open on `item.started` and close on `item.completed`. */
+/** One thread item as UI chunks. Agent message updates carry cumulative text. */
 function* itemChunks(
-  phase: "started" | "completed",
+  phase: "started" | "updated" | "completed",
   item: ThreadItem,
   run: string,
   open: Set<string>,
+  textLengths: Map<string, number>,
 ): Generator<UIMessageChunk> {
   const id = `${run}-${item.id}`;
   const tool =
@@ -110,14 +111,18 @@ function* itemChunks(
             : null,
         dynamic: true,
       };
-  } else if (
-    phase === "completed" &&
-    item.type === "agent_message" &&
-    item.text
-  ) {
-    yield { type: "text-start", id };
-    yield { type: "text-delta", id, delta: item.text };
-    yield { type: "text-end", id };
+  } else if (item.type === "agent_message") {
+    const length = textLengths.get(id);
+    if (length === undefined && !item.text) return;
+    if (length === undefined) yield { type: "text-start", id };
+    const delta = item.text.slice(length ?? 0);
+    if (delta) yield { type: "text-delta", id, delta };
+    if (phase === "completed") {
+      textLengths.delete(id);
+      yield { type: "text-end", id };
+    } else {
+      textLengths.set(id, Math.max(length ?? 0, item.text.length));
+    }
   }
 }
 
@@ -147,6 +152,7 @@ export async function* runCodex(
         ? codex().resumeThread(resume, options)
         : codex().startThread(options);
       const open = new Set<string>();
+      const textLengths = new Map<string, number>();
       let produced = false;
       const failed = (): UIMessageChunk | null =>
         resume && !produced
@@ -159,12 +165,13 @@ export async function* runCodex(
         let retry = false;
         for await (const e of events as AsyncGenerator<ThreadEvent>) {
           if (e.type === "thread.started") onSession(e.thread_id);
-          else if (e.type === "item.started" || e.type === "item.completed") {
+          else if (e.type === "item.started" || e.type === "item.updated" || e.type === "item.completed") {
             for (const chunk of itemChunks(
-              e.type === "item.started" ? "started" : "completed",
+              e.type === "item.started" ? "started" : e.type === "item.updated" ? "updated" : "completed",
               e.item,
               run,
               open,
+              textLengths,
             )) {
               produced = true;
               yield chunk;

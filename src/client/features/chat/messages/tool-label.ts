@@ -9,6 +9,7 @@ const TOOLS: Record<string, Info> = {
   mcp__food_lab__search: { running: "Recherche dans The Food Lab", done: "Recherche dans The Food Lab", detail: (i) => i.query },
   mcp__food_lab__read_section: { running: "Lecture de The Food Lab", done: "Section de The Food Lab lue" },
   list_meals: { running: "Recherche de repas", done: "Repas recherchés", detail: query },
+  suggest_meals: { running: "Recherche d’idées de repas", done: "Idées de repas trouvées" },
   get_meal: { running: "Lecture d'un repas", done: "Repas lu" },
   create_meal: { running: "Création du repas", done: "Repas créé", detail: name },
   update_meal: { running: "Modification du repas", done: "Repas modifié", detail: name },
@@ -19,16 +20,21 @@ const TOOLS: Record<string, Info> = {
   update_ingredient: { running: "Modification de l'ingrédient", done: "Ingrédient modifié", detail: name },
   search_ciqual: { running: "Recherche Ciqual", done: "Ciqual", detail: query },
   get_week_plan: { running: "Lecture du planning", done: "Planning lu", detail: (i) => i.week },
+  get_days_plan: { running: "Lecture du planning", done: "Planning lu", detail: (i) => i.from },
   set_slot: { running: "Mise à jour du planning", done: "Planning mis à jour", detail: (i) => [i.date, i.moment].filter(Boolean).join(" ") },
   delete_ingredient: { running: "Suppression de l'ingrédient", done: "Ingrédient supprimé" },
   delete_meal: { running: "Suppression du repas", done: "Repas supprimé" },
   set_default_recipe: { running: "Choix de la recette par défaut", done: "Recette par défaut choisie", detail: name },
   delete_recipe: { running: "Suppression de la recette", done: "Recette supprimée" },
+  add_preference: { running: "Enregistrement de la préférence", done: "Préférence enregistrée" },
+  remove_preference: { running: "Suppression de la préférence", done: "Préférence supprimée" },
   draw_week: { running: "Tirage de la semaine", done: "Semaine tirée", detail: (i) => i.week },
   redraw_slot: { running: "Tirage du créneau", done: "Créneau tiré", detail: (i) => [i.date, i.moment].filter(Boolean).join(" ") },
   get_shopping_list: { running: "Lecture des courses", done: "Courses lues", detail: (i) => i.days && `${i.days} jours` },
   add_shopping_item: { running: "Ajout aux courses", done: "Ajouté aux courses", detail: (i) => i.label },
   check_shopping_item: { running: "Mise à jour des courses", done: "Courses mises à jour" },
+  exclude_meal_from_shopping: { running: "Mise à jour des courses du repas", done: "Courses du repas mises à jour" },
+  remove_shopping_item: { running: "Retrait d’un article", done: "Article retiré" },
   get_history: { running: "Lecture de l'historique", done: "Historique lu", detail: (i) => [i.from, i.to].filter(Boolean).join(" → ") },
   get_nutrition_summary: { running: "Calcul du bilan nutritionnel", done: "Bilan nutritionnel", detail: (i) => i.week },
   WebSearch: { running: "Recherche web", done: "Recherche web", detail: (i) => i.query },
@@ -49,7 +55,7 @@ export function mealIdOf(toolName: string, output: unknown): number | undefined 
 export function toolLabel(toolName: string, input: unknown, state: "running" | "done" | "error", errorText?: string) {
   const key = toolName.replace("mcp__app__", "");
   const info = TOOLS[key];
-  const label = (state === "done" ? info?.done : info?.running) ?? key;
+  const label = (state === "done" ? info?.done : info?.running) ?? (state === "done" ? "Action terminée" : "Action de l’assistant");
   const raw = input && typeof input === "object" ? info?.detail?.(input as Record<string, unknown>) : undefined;
   const detail = typeof raw === "string" && raw ? raw : undefined;
   if (state === "error") return `${label} : ${errorText ?? "échec"}`;

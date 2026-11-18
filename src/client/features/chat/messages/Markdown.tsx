@@ -13,15 +13,25 @@ const STYLES = [
   "[&_table]:block [&_table]:overflow-x-auto [&_table]:text-[13px] [&_:is(th,td)]:border-b [&_:is(th,td)]:border-border [&_:is(th,td)]:px-2 [&_:is(th,td)]:py-1 [&_th]:text-left [&_th]:font-bold [&_td]:tabular-nums",
 ].join(" ");
 
+export type OpenFoodLab = (id: string, link: HTMLAnchorElement) => void;
+
 /** Assistant text. In-app links (#repas/12) navigate in place; the rest open in a new tab. */
-export function Markdown({ children }: { children: string }) {
+export function Markdown({ children, onFoodLab }: { children: string; onFoodLab?: OpenFoodLab }) {
   return (
     <div className={STYLES}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ node: _node, href, ...props }) =>
-            href?.startsWith("#") ? <a href={href} {...props} /> : <a href={href} target="_blank" rel="noreferrer" {...props} />,
+          a: ({ node: _node, href, ...props }) => {
+            if (onFoodLab && href?.startsWith("#food-lab/")) {
+              const id = href.slice("#food-lab/".length);
+              return <a href={href} {...props} onClick={(event) => {
+                event.preventDefault();
+                onFoodLab(id, event.currentTarget);
+              }} />;
+            }
+            return href?.startsWith("#") ? <a href={href} {...props} /> : <a href={href} target="_blank" rel="noreferrer" {...props} />;
+          },
         }}
       >
         {children}
