@@ -1,6 +1,5 @@
 import type { ChatStatus, DynamicToolUIPart, FileUIPart, UIMessage } from "ai";
 import { ImageIcon } from "lucide-react";
-import { useLayoutEffect } from "react";
 import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from "@/components/ui/chat/attachment";
 import { Bubble, BubbleContent } from "@/components/ui/chat/bubble";
 import { Message, MessageContent } from "@/components/ui/chat/message";
@@ -11,10 +10,9 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
-  useMessageScroller,
 } from "@/components/ui/chat/message-scroller";
 import { Trace, TraceCollapsible, TraceCollapsibleContent, TraceCollapsibleTrigger, TraceLine, TraceTitle } from "@/components/ui/chat/trace";
-import { Markdown, type OpenFoodLab } from "@/features/chat/messages/Markdown";
+import { Markdown, type OpenReference } from "@/features/chat/messages/Markdown";
 import { MealCard } from "@/features/chat/messages/MealCard";
 import { mealIdOf, toolLabel } from "@/features/chat/messages/tool-label";
 
@@ -81,7 +79,7 @@ const touchedMeals = (parts: Part[]) => [
   ...new Set(parts.flatMap((p) => (p.type === "dynamic-tool" && p.state === "output-available" ? (mealIdOf(p.toolName, p.output) ?? []) : []))),
 ];
 
-function ChatMessage({ message, live, onFoodLab }: { message: UIMessage; live: boolean; onFoodLab: OpenFoodLab }) {
+function ChatMessage({ message, live, onReference }: { message: UIMessage; live: boolean; onReference: OpenReference }) {
   const mine = message.role === "user";
   return (
     <Message align={mine ? "end" : "start"}>
@@ -96,7 +94,7 @@ function ChatMessage({ message, live, onFoodLab }: { message: UIMessage; live: b
             g.text && (
               <Bubble key={i} variant={mine ? "muted" : "ghost"}>
                 <BubbleContent className={mine ? "rounded-lg bg-sun! px-3.5 py-2 text-[15px] font-medium text-foreground" : "text-[15px]"}>
-                  {mine ? <span className="whitespace-pre-wrap">{g.text}</span> : <Markdown onFoodLab={onFoodLab}>{g.text}</Markdown>}
+                  {mine ? <span className="whitespace-pre-wrap">{g.text}</span> : <Markdown onReference={onReference}>{g.text}</Markdown>}
                 </BubbleContent>
               </Bubble>
             )
@@ -110,17 +108,9 @@ function ChatMessage({ message, live, onFoodLab }: { message: UIMessage; live: b
   );
 }
 
-function ScrollToNewestMessage({ id }: { id: string }) {
-  const { scrollToMessage } = useMessageScroller();
-  useLayoutEffect(() => {
-    scrollToMessage(id, { align: "start", behavior: "instant" });
-  }, [id, scrollToMessage]);
-  return null;
-}
-
 /** `queued`: the message sent waits for a turn of another conversation (or device) to end. */
-export function MessageList({ messages, status, queued = false, onFoodLab }: {
-  messages: UIMessage[]; status: ChatStatus; queued?: boolean; onFoodLab: OpenFoodLab;
+export function MessageList({ messages, status, queued = false, onReference }: {
+  messages: UIMessage[]; status: ChatStatus; queued?: boolean; onReference: OpenReference;
 }) {
   const busy = status === "submitted" || status === "streaming";
   const last = messages.at(-1);
@@ -133,17 +123,13 @@ export function MessageList({ messages, status, queued = false, onFoodLab }: {
       </div>
     );
   return (
-    <MessageScrollerProvider defaultScrollPosition="end" scrollMargin={12}>
+    <MessageScrollerProvider defaultScrollPosition="end" autoScroll>
       <MessageScroller className="flex-1">
-        <MessageScrollerViewport className="px-3.5 [container-type:size]">
+        <MessageScrollerViewport className="px-3.5">
           <MessageScrollerContent className="gap-4 py-3">
             {messages.map((m) => (
-              <MessageScrollerItem
-                key={m.id}
-                messageId={m.id}
-                className={m === last ? "min-h-[calc(100cqh-1.5rem)] [content-visibility:visible]" : undefined}
-              >
-                <ChatMessage message={m} live={busy && m === last} onFoodLab={onFoodLab} />
+              <MessageScrollerItem key={m.id} messageId={m.id}>
+                <ChatMessage message={m} live={busy && m === last} onReference={onReference} />
                 {m === last && waiting && (
                   <Trace className="mt-4">
                     <TraceLine status="running">
@@ -155,7 +141,6 @@ export function MessageList({ messages, status, queued = false, onFoodLab }: {
             ))}
           </MessageScrollerContent>
         </MessageScrollerViewport>
-        {last && <ScrollToNewestMessage id={last.id} />}
         <MessageScrollerButton />
       </MessageScroller>
     </MessageScrollerProvider>

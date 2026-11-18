@@ -5,7 +5,7 @@ import { z } from "zod";
 import { appendMessages, deleteConversation, getOrCreateConversation, listConversations, loadMessages, saveSessionId } from "../services/support/chat-store";
 import { emitChanged, emitChat } from "../events";
 import { getSettings } from "../services/support/settings";
-import { readFoodLabSection } from "./reference/food-lab";
+import { readLegacyReference, readReference } from "./reference/knowledge";
 import { follow, isBusy, liveRun, queueRun, stopRuns } from "./runtime/live-run";
 import { runTurn } from "./runtime/providers";
 import type { RunInput } from "./runtime/run";
@@ -32,8 +32,9 @@ const withoutImageData = (m: UIMessage): UIMessage => ({
 });
 
 export const chatRoute = new Hono()
-  .get("/food-lab/:id", async (c) => {
-    const markdown = await readFoodLabSection(c.req.param("id"));
+  .get("/:source{reference|food-lab}/:id", (c) => {
+    const read = c.req.param("source") === "reference" ? readReference : readLegacyReference;
+    const markdown = read(c.req.param("id"));
     return markdown === undefined
       ? c.text("Section introuvable.", 404)
       : c.text(markdown);

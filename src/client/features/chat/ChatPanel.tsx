@@ -6,15 +6,16 @@ import { AssistantPicker } from "@/features/chat/composer/AssistantPicker";
 import { ChatInput } from "@/features/chat/composer/ChatInput";
 import { HistoryList } from "@/features/chat/session/HistoryList";
 import { MessageList } from "@/features/chat/messages/MessageList";
-import { FoodLabReader } from "@/features/chat/messages/FoodLabReader";
+import type { ReferenceTarget } from "@/features/chat/messages/Markdown";
+import { ReferenceReader } from "@/features/chat/messages/ReferenceReader";
 import { useChatSession } from "@/features/chat/session/use-chat-session";
 
 /** The assistant. Fills its container: header, scrolling messages (or the history list), input pinned at the bottom. */
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const { messages, status, busy, queued, error, conversationId, resumable, send, stop, reset, open } = useChatSession();
   const [history, setHistory] = useState(false);
-  const [foodLabId, setFoodLabId] = useState<string | null>(null);
-  const foodLabLink = useRef<HTMLAnchorElement>(null);
+  const [reference, setReference] = useState<ReferenceTarget | null>(null);
+  const referenceLink = useRef<HTMLAnchorElement>(null);
   useBackLayer(history, () => setHistory(false)); // back from the history list: to the conversation
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-background">
@@ -63,9 +64,9 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
       )}
       {/* kept mounted behind the history so a half-typed message survives */}
       <div className={history ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
-        <MessageList messages={messages} status={status} queued={queued} onFoodLab={(id, link) => {
-          foodLabLink.current = link;
-          setFoodLabId(id);
+        <MessageList messages={messages} status={status} queued={queued} onReference={(target, link) => {
+          referenceLink.current = link;
+          setReference(target);
         }} />
         {resumable && (
           <button
@@ -86,7 +87,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
         )}
         <ChatInput busy={busy} onSend={send} onStop={stop} />
       </div>
-      <FoodLabReader id={foodLabId} onClose={() => setFoodLabId(null)} returnFocus={foodLabLink} />
+      <ReferenceReader target={reference} onClose={() => setReference(null)} returnFocus={referenceLink} />
     </div>
   );
 }
