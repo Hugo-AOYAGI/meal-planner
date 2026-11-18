@@ -76,7 +76,7 @@ Environment variables read by the code:
 
 The assistant, household size (default servings, default 2), which moments the draw fills (default dinner), the draw's players and the quick draw's time limit (default 25 min) are set in the app, under the Foyer settings, and stored in the database.
 
-When the local reader is installed on the app host, both chat assistants use The Food Lab for cooking questions. The compact table of contents goes in the main prompt and the full sections are read on demand. Keep the book files together on the host and point `MEAL_PLANNER_FOOD_LAB_DIR` there if using a different location.
+When the local reader is installed on the app host, both chat assistants use The Food Lab for cooking questions. The compact table of contents goes in the main prompt and the full sections are read on demand. See the [local knowledge book layout](docs/food-lab-knowledge-book.md) for setup and file formats.
 
 ## Data and backups
 
