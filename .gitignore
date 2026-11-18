@@ -3,3 +3,8 @@ dist
 data/
 .superpowers/
 .env
+
+# Local Food Lab source and generated reader
+The Food Lab.md
+The Food Lab/
+/agent-reader/
