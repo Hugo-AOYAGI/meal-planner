@@ -17,6 +17,7 @@ const TOOLS: Record<string, Info> = {
   search_ciqual: { running: "Recherche Ciqual", done: "Ciqual", detail: query },
   get_week_plan: { running: "Lecture du planning", done: "Planning lu", detail: (i) => i.week },
   set_slot: { running: "Mise à jour du planning", done: "Planning mis à jour", detail: (i) => [i.date, i.moment].filter(Boolean).join(" ") },
+  delete_ingredient: { running: "Suppression de l'ingrédient", done: "Ingrédient supprimé" },
   delete_meal: { running: "Suppression du repas", done: "Repas supprimé" },
   set_default_recipe: { running: "Choix de la recette par défaut", done: "Recette par défaut choisie", detail: name },
   delete_recipe: { running: "Suppression de la recette", done: "Recette supprimée" },

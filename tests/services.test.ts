@@ -1,11 +1,11 @@
 import { expect, test } from "bun:test";
 import { addDays, mondayOf, today } from "@shared/dates";
 import { applySuggestions, drawDays, drawWeek, redrawSlot, suggestMeals } from "@server/services/planning/draw";
-import { createIngredient } from "@server/services/catalog/ingredients";
+import { createIngredient, deleteIngredient, getIngredient } from "@server/services/catalog/ingredients";
 import { createMeal, getMeal, listMeals } from "@server/services/catalog/meals";
 import { addPreference, listPreferences, removePreference } from "@server/services/catalog/preferences";
 import { getDays, getWeek, setSlot } from "@server/services/planning/plan";
-import { createRecipe, getRecipe, listRecipes, setDefaultRecipe } from "@server/services/catalog/recipes";
+import { createRecipe, deleteRecipe, getRecipe, listRecipes, setDefaultRecipe } from "@server/services/catalog/recipes";
 import { addShoppingExtra, getShoppingList, setShoppingCheck, setShoppingExclusion } from "@server/services/planning/shopping";
 import { getNutritionSummary } from "@server/services/planning/insights";
 
@@ -183,4 +183,26 @@ test("preferences are listed, added and removed", () => {
   removePreference(a.id);
   expect(listPreferences()).toHaveLength(1);
   expect(() => removePreference(a.id)).toThrow();
+});
+
+test("an ingredient is deleted unless a recipe still uses it", () => {
+  const make = (name: string) =>
+    createIngredient({ name, aisle: "autre", kcal: 1, protein: 1, carbs: 1, fat: 1, fibre: 1, ciqualCode: null, source: "manual" });
+  const sel = make("Sel gris");
+  const meal = createMeal({ name: "Bouillon", kind: "plat", status: "regular", notes: null });
+  const recipe = createRecipe({
+    mealId: meal.id,
+    name: "Bouillon",
+    servings: 2,
+    durationMin: 10,
+    steps: [],
+    sourceUrl: null,
+    lines: [{ ingredientId: sel.id, quantity: 5, unit: "g", grams: 5, gramsEstimated: false, note: null }],
+  });
+  expect(() => deleteIngredient(sel.id)).toThrow(/Bouillon/);
+  expect(getIngredient(sel.id).name).toBe("Sel gris");
+  deleteRecipe(recipe.id);
+  deleteIngredient(sel.id);
+  expect(() => getIngredient(sel.id)).toThrow();
+  expect(() => deleteIngredient(sel.id)).toThrow();
 });

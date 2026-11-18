@@ -2,7 +2,7 @@ import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 import { normalize } from "@shared/text";
 import type { Ingredient, IngredientInput, IngredientSearchQuery, IngredientUpdate } from "@shared/schemas";
 import { db } from "../../db";
-import { ciqualFood, ingredient } from "../../db/schema";
+import { ciqualFood, ingredient, recipe, recipeIngredient } from "../../db/schema";
 import { AppError, notFound } from "../support/errors";
 
 type Row = typeof ingredient.$inferSelect;
@@ -68,4 +68,24 @@ export function updateIngredient(id: number, patch: IngredientUpdate): Ingredien
     if (String(e).includes("UNIQUE")) throw new AppError(`L'ingrédient « ${patch.name} » existe déjà`, 409);
     throw e;
   }
+}
+
+/** Refused while a recipe still uses it (its lines would lose their ingredient); the error names those recipes. */
+export function deleteIngredient(id: number): void {
+  const { name } = getIngredient(id);
+  const users = db
+    .selectDistinct({ name: recipe.name })
+    .from(recipeIngredient)
+    .innerJoin(recipe, eq(recipe.id, recipeIngredient.recipeId))
+    .where(eq(recipeIngredient.ingredientId, id))
+    .orderBy(asc(recipe.name))
+    .all();
+  if (users.length) {
+    const shown = users.slice(0, 5).map((r) => `« ${r.name} »`).join(", ");
+    throw new AppError(
+      `« ${name} » est utilisé par ${users.length} recette${users.length > 1 ? "s" : ""} (${shown}${users.length > 5 ? "…" : ""}) : retire-le d'abord de ces recettes`,
+      409,
+    );
+  }
+  db.delete(ingredient).where(eq(ingredient.id, id)).run();
 }
