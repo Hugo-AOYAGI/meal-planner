@@ -9,7 +9,7 @@ import {
   ingredientUpdateSchema,
 } from "@shared/schemas";
 import { getCiqualFood, searchCiqual } from "../../services/catalog/ciqual";
-import { createIngredient, getIngredient, searchIngredients, updateIngredient } from "../../services/catalog/ingredients";
+import { createIngredient, deleteIngredient, getIngredient, searchIngredients, updateIngredient } from "../../services/catalog/ingredients";
 
 const idParam = z.object({ id: z.coerce.number().pipe(idSchema) });
 
@@ -19,7 +19,11 @@ export const ingredientsRoute = new Hono()
   .get("/:id", zValidator("param", idParam), (c) => c.json(getIngredient(c.req.valid("param").id)))
   .patch("/:id", zValidator("param", idParam), zValidator("json", ingredientUpdateSchema), (c) =>
     c.json(updateIngredient(c.req.valid("param").id, c.req.valid("json"))),
-  );
+  )
+  .delete("/:id", zValidator("param", idParam), (c) => {
+    deleteIngredient(c.req.valid("param").id);
+    return c.body(null, 204);
+  });
 
 export const ciqualRoute = new Hono()
   .get("/", zValidator("query", ciqualSearchQuerySchema), (c) => c.json(searchCiqual(c.req.valid("query"))))

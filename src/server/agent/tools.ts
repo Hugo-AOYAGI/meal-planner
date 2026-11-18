@@ -26,7 +26,7 @@ import {
 import { searchCiqual } from "../services/catalog/ciqual";
 import { drawWeek, redrawSlot, suggestMeals } from "../services/planning/draw";
 import { AppError } from "../services/support/errors";
-import { createIngredient, searchIngredients, updateIngredient } from "../services/catalog/ingredients";
+import { createIngredient, deleteIngredient, getIngredient, searchIngredients, updateIngredient } from "../services/catalog/ingredients";
 import { getHistory, getNutritionSummary } from "../services/planning/insights";
 import { addPreference, removePreference } from "../services/catalog/preferences";
 import { createMeal, deleteMeal, getMeal, listMeals, updateMeal } from "../services/catalog/meals";
@@ -132,6 +132,16 @@ export const appTools = [
       const r = getRecipe(id);
       deleteRecipe(id);
       return { deleted: r.name, mealId: r.mealId };
+    },
+  ),
+  define(
+    "delete_ingredient",
+    "Supprime définitivement un ingrédient du foyer. Refusé s'il est encore utilisé par une recette (l'erreur les nomme). Seulement sur demande explicite.",
+    z.object({ id: idSchema }),
+    ({ id }) => {
+      const { name } = getIngredient(id);
+      deleteIngredient(id);
+      return { deleted: name };
     },
   ),
   define(
