@@ -6,7 +6,7 @@ import { AssistantPicker } from "@/features/chat/composer/AssistantPicker";
 import { ChatInput } from "@/features/chat/composer/ChatInput";
 import { HistoryList } from "@/features/chat/session/HistoryList";
 import { MessageList } from "@/features/chat/messages/MessageList";
-import type { ReferenceTarget } from "@/features/chat/messages/Markdown";
+import type { ReferenceTarget } from "@shared/references/links";
 import { ReferenceReader } from "@/features/chat/messages/ReferenceReader";
 import { useChatSession } from "@/features/chat/session/use-chat-session";
 

@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { parseReferenceHref, type ReferenceTarget } from "@shared/references/links";
 
 const STYLES = [
   "min-w-0 text-[15px] leading-normal break-words",
@@ -13,7 +14,6 @@ const STYLES = [
   "[&_table]:block [&_table]:overflow-x-auto [&_table]:text-[13px] [&_:is(th,td)]:border-b [&_:is(th,td)]:border-border [&_:is(th,td)]:px-2 [&_:is(th,td)]:py-1 [&_th]:text-left [&_th]:font-bold [&_td]:tabular-nums",
 ].join(" ");
 
-export type ReferenceTarget = { source: "reference" | "food-lab"; id: string };
 export type OpenReference = (target: ReferenceTarget, link: HTMLAnchorElement) => void;
 
 /** Assistant text. In-app links (#repas/12) navigate in place; the rest open in a new tab. */
@@ -24,13 +24,11 @@ export function Markdown({ children, onReference }: { children: string; onRefere
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ node: _node, href, ...props }) => {
-            const citation = href?.match(/^#(reference|food-lab)\/(.+)$/);
+            const citation = parseReferenceHref(href);
             if (onReference && citation) {
-              const source = citation[1] === "reference" ? "reference" : "food-lab";
-              const id = citation[2]!;
               return <a href={href} {...props} onClick={(event) => {
                 event.preventDefault();
-                onReference({ source, id }, event.currentTarget);
+                onReference(citation, event.currentTarget);
               }} />;
             }
             return href?.startsWith("#") ? <a href={href} {...props} /> : <a href={href} target="_blank" rel="noreferrer" {...props} />;
