@@ -1,5 +1,6 @@
 import type { ChatStatus, DynamicToolUIPart, FileUIPart, UIMessage } from "ai";
 import { ImageIcon } from "lucide-react";
+import { useLayoutEffect } from "react";
 import { Attachment, AttachmentContent, AttachmentMedia, AttachmentTitle } from "@/components/ui/chat/attachment";
 import { Bubble, BubbleContent } from "@/components/ui/chat/bubble";
 import { Message, MessageContent } from "@/components/ui/chat/message";
@@ -10,9 +11,10 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
+  useMessageScroller,
 } from "@/components/ui/chat/message-scroller";
 import { Trace, TraceCollapsible, TraceCollapsibleContent, TraceCollapsibleTrigger, TraceLine, TraceTitle } from "@/components/ui/chat/trace";
-import { Markdown } from "@/features/chat/messages/Markdown";
+import { Markdown, type OpenFoodLab } from "@/features/chat/messages/Markdown";
 import { MealCard } from "@/features/chat/messages/MealCard";
 import { mealIdOf, toolLabel } from "@/features/chat/messages/tool-label";
 
@@ -31,16 +33,15 @@ function ToolRow({ part, live }: { part: DynamicToolUIPart; live: boolean }) {
 
 const toolRows = (parts: DynamicToolUIPart[], live: boolean) => parts.map((p) => <ToolRow key={p.toolCallId} part={p} live={live} />);
 
-/** A run of tool calls. Long runs fold into one line (the step in progress, then a count) so they don't bury the answer. */
+/** Long tool runs show the latest action and keep the full list expandable. */
 function ToolGroup({ parts, live }: { parts: DynamicToolUIPart[]; live: boolean }) {
   if (parts.length <= 3) return <Trace>{toolRows(parts, live)}</Trace>;
   const current = parts.at(-1)!;
-  const running = live && current.state !== "output-available" && current.state !== "output-error";
   return (
     <Trace>
       <TraceCollapsible>
         <TraceCollapsibleTrigger>
-          {running ? <ToolRow part={current} live /> : <TraceLine><TraceTitle>{parts.length} étapes</TraceTitle></TraceLine>}
+          <ToolRow part={current} live={live} />
         </TraceCollapsibleTrigger>
         <TraceCollapsibleContent className="flex flex-col gap-1">{toolRows(parts, live)}</TraceCollapsibleContent>
       </TraceCollapsible>
@@ -80,7 +81,7 @@ const touchedMeals = (parts: Part[]) => [
   ...new Set(parts.flatMap((p) => (p.type === "dynamic-tool" && p.state === "output-available" ? (mealIdOf(p.toolName, p.output) ?? []) : []))),
 ];
 
-function ChatMessage({ message, live }: { message: UIMessage; live: boolean }) {
+function ChatMessage({ message, live, onFoodLab }: { message: UIMessage; live: boolean; onFoodLab: OpenFoodLab }) {
   const mine = message.role === "user";
   return (
     <Message align={mine ? "end" : "start"}>
@@ -95,7 +96,7 @@ function ChatMessage({ message, live }: { message: UIMessage; live: boolean }) {
             g.text && (
               <Bubble key={i} variant={mine ? "muted" : "ghost"}>
                 <BubbleContent className={mine ? "rounded-lg bg-sun! px-3.5 py-2 text-[15px] font-medium text-foreground" : "text-[15px]"}>
-                  {mine ? <span className="whitespace-pre-wrap">{g.text}</span> : <Markdown>{g.text}</Markdown>}
+                  {mine ? <span className="whitespace-pre-wrap">{g.text}</span> : <Markdown onFoodLab={onFoodLab}>{g.text}</Markdown>}
                 </BubbleContent>
               </Bubble>
             )
@@ -109,8 +110,18 @@ function ChatMessage({ message, live }: { message: UIMessage; live: boolean }) {
   );
 }
 
+function ScrollToNewestMessage({ id }: { id: string }) {
+  const { scrollToMessage } = useMessageScroller();
+  useLayoutEffect(() => {
+    scrollToMessage(id, { align: "start", behavior: "instant" });
+  }, [id, scrollToMessage]);
+  return null;
+}
+
 /** `queued`: the message sent waits for a turn of another conversation (or device) to end. */
-export function MessageList({ messages, status, queued = false }: { messages: UIMessage[]; status: ChatStatus; queued?: boolean }) {
+export function MessageList({ messages, status, queued = false, onFoodLab }: {
+  messages: UIMessage[]; status: ChatStatus; queued?: boolean; onFoodLab: OpenFoodLab;
+}) {
   const busy = status === "submitted" || status === "streaming";
   const last = messages.at(-1);
   const waiting = busy && (last?.role === "user" || last?.parts.length === 0);
@@ -122,24 +133,29 @@ export function MessageList({ messages, status, queued = false }: { messages: UI
       </div>
     );
   return (
-    <MessageScrollerProvider defaultScrollPosition="end">
+    <MessageScrollerProvider defaultScrollPosition="end" scrollMargin={12}>
       <MessageScroller className="flex-1">
-        <MessageScrollerViewport className="px-3.5">
+        <MessageScrollerViewport className="px-3.5 [container-type:size]">
           <MessageScrollerContent className="gap-4 py-3">
             {messages.map((m) => (
-              <MessageScrollerItem key={m.id} messageId={m.id}>
-                <ChatMessage message={m} live={busy && m === last} />
+              <MessageScrollerItem
+                key={m.id}
+                messageId={m.id}
+                className={m === last ? "min-h-[calc(100cqh-1.5rem)] [content-visibility:visible]" : undefined}
+              >
+                <ChatMessage message={m} live={busy && m === last} onFoodLab={onFoodLab} />
+                {m === last && waiting && (
+                  <Trace className="mt-4">
+                    <TraceLine status="running">
+                      <TraceTitle>{queued ? "En attente" : "Réflexion"}</TraceTitle>
+                    </TraceLine>
+                  </Trace>
+                )}
               </MessageScrollerItem>
             ))}
-            {waiting && (
-              <Trace>
-                <TraceLine status="running">
-                  <TraceTitle>{queued ? "En attente" : "Réflexion"}</TraceTitle>
-                </TraceLine>
-              </Trace>
-            )}
           </MessageScrollerContent>
         </MessageScrollerViewport>
+        {last && <ScrollToNewestMessage id={last.id} />}
         <MessageScrollerButton />
       </MessageScroller>
     </MessageScrollerProvider>

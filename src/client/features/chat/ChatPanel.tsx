@@ -1,17 +1,20 @@
 import { HistoryIcon, MessageSquareIcon, Undo2Icon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useBackLayer } from "@/lib/hooks/use-back";
 import { Button } from "@/components/ui/actions/button";
 import { AssistantPicker } from "@/features/chat/composer/AssistantPicker";
 import { ChatInput } from "@/features/chat/composer/ChatInput";
 import { HistoryList } from "@/features/chat/session/HistoryList";
 import { MessageList } from "@/features/chat/messages/MessageList";
+import { FoodLabReader } from "@/features/chat/messages/FoodLabReader";
 import { useChatSession } from "@/features/chat/session/use-chat-session";
 
 /** The assistant. Fills its container: header, scrolling messages (or the history list), input pinned at the bottom. */
 export function ChatPanel({ onClose }: { onClose?: () => void }) {
   const { messages, status, busy, queued, error, conversationId, resumable, send, stop, reset, open } = useChatSession();
   const [history, setHistory] = useState(false);
+  const [foodLabId, setFoodLabId] = useState<string | null>(null);
+  const foodLabLink = useRef<HTMLAnchorElement>(null);
   useBackLayer(history, () => setHistory(false)); // back from the history list: to the conversation
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-background">
@@ -60,7 +63,10 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
       )}
       {/* kept mounted behind the history so a half-typed message survives */}
       <div className={history ? "hidden" : "flex min-h-0 flex-1 flex-col"}>
-        <MessageList messages={messages} status={status} queued={queued} />
+        <MessageList messages={messages} status={status} queued={queued} onFoodLab={(id, link) => {
+          foodLabLink.current = link;
+          setFoodLabId(id);
+        }} />
         {resumable && (
           <button
             type="button"
@@ -80,6 +86,7 @@ export function ChatPanel({ onClose }: { onClose?: () => void }) {
         )}
         <ChatInput busy={busy} onSend={send} onStop={stop} />
       </div>
+      <FoodLabReader id={foodLabId} onClose={() => setFoodLabId(null)} returnFocus={foodLabLink} />
     </div>
   );
 }

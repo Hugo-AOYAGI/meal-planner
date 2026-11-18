@@ -84,6 +84,7 @@ export function useChatSession() {
   );
   const chat = useChat({
     transport,
+    experimental_throttle: 40,
     onData: (part) => {
       if (part.type !== "data-conversation") return;
       const data = part.data as { id: string; queued?: boolean };
