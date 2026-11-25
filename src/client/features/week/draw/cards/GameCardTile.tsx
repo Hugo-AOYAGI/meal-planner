@@ -17,6 +17,9 @@ export function CardMeta({ card }: { card: GameCard }) {
       {card.durationMin !== null && <span>{card.durationMin} min</span>}
       {card.tag === "new" && <span className="rounded-full bg-white/70 px-2 py-0.5 text-foreground">✨ Nouveau</span>}
       {card.tag === "reserve" && <span className="rounded-full bg-white/70 px-2 py-0.5 text-foreground">💛 Envie commune</span>}
+      {card.tag === "leftover" && (
+        <span className="rounded-full bg-white/70 px-2 py-0.5 text-foreground">🥡 Restes{card.age ? ` · ${card.age} j` : ""}</span>
+      )}
     </span>
   );
 }

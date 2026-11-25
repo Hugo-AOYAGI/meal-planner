@@ -22,7 +22,9 @@ export function useToday(
   const scrollTo = useCallback(
     (behavior: ScrollBehavior) => {
       const scroller = page.current?.closest("main");
-      const target = page.current?.querySelector<HTMLElement>(`[data-date="${day}"]`);
+      // what is shown first: the block that opens on today (with the fridge above it), or else today's day
+      const target =
+        page.current?.querySelector<HTMLElement>("[data-plan-start]") ?? page.current?.querySelector<HTMLElement>(`[data-date="${day}"]`);
       if (!scroller || !target) return false;
       const top = toolbar.current?.getBoundingClientRect().bottom ?? scroller.getBoundingClientRect().top;
       scroller.scrollBy({ top: target.getBoundingClientRect().top - top - 8, behavior });

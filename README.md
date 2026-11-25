@@ -26,6 +26,7 @@ The interface and all content are in French. It is built for one family running 
 - **Planning**: a rolling plan starting today, with lunch and dinner slots. A slot holds entrée, plat and dessert courses.
 - **Meal library**: meals with one or more recipes, a default recipe, and quantities scaled to the number of people.
 - **Tirer (draw game)**: a short card game to fill the coming days, alone or with the other household members, each on their phone or passing one phone. Tapping Tirer deals cards at once (balanced on protein and fibre); each player secretly picks one card per empty slot, cards picked by both are matches, and a catch-up round lets each accept the other's remaining picks. Only meals both accepted are planned; extra matches go to a small "envies communes" reserve that comes back in later hands. Each hand has a ✨ Nouveau card (a dish never made). Changing the duration adapts the hand. A quick mode deals fast meals for tonight, and the dice on a slot offers three cards to pick from.
+- **Leftovers**: a dish can be cooked with portions to keep (the box icon in a slot); the dish remembers it for next time and the shopping list buys for them. Kept portions show in **Au frigo** above today, with their age, a one-tap "Ce soir", a correction of what is left, and "Fini" / "Jeté". Leftovers can also be added by hand. The quick draw deals the fridge first, and each device can opt in (Foyer) to one push reminder a day at 17:00 when a leftover is 2 days old or more.
 - **Shopping list**: for the next 3, 7 or 14 days, grouped by aisle, with ticks and manual lines.
 - **Nutrition**: per-person values from the Ciqual table, an extended detail view, and daily references for a 55 kg active young man (indicative, not medical advice).
 - **Search**: by meal name or ingredient, with ingredient exclusion ("with chicken but without rice").
@@ -71,6 +72,7 @@ Environment variables read by the code:
 | `MEAL_PLANNER_CODEX_MODEL` | `gpt-6.1-terra` | Model used by the Codex assistant. |
 | `MEAL_PLANNER_KNOWLEDGE_DIR` | `data/knowledge` | Local directory with a compact table of contents and Markdown sections. |
 | `ANTHROPIC_API_KEY` | unset | If set, the Claude assistant bills the API; otherwise it uses the machine's Claude login. |
+| `MEAL_PLANNER_PUSH_SUBJECT` | `mailto:meal-planner@example.com` | Contact sent to the browsers' push services with the leftover reminders. |
 | `MEAL_PLANNER_BACKGROUND` | on | `off` disables the assistant's background jobs (recipe durations for the quick draw, new-dish ideas for the draw), which otherwise run 5 minutes after start and every night at 03:30. |
 
 The assistant, household size (default servings, default 2), which moments the draw fills (default dinner), the draw's players and the quick draw's time limit (default 25 min) are set in the app, under the Foyer settings, and stored in the database.

@@ -1,6 +1,6 @@
 # Leftovers: design
 
-Date: 2026-11-25. Status: draft, awaiting Hugo's approval.
+Date: 2026-11-25. Status: approved by Hugo on 2026-11-25 and implemented. Differences from the draft: what remains of a leftover is derived (portions less the servings of the plan entries eating from it), so removing a "Restes" entry gives its portions back; "Au frigo" sits right above today, where the planning opens; the "comme la dernière fois" hint was left out to keep the slot editor light.
 
 Lines marked **(decided)** were chosen by Hugo in conversation. Lines marked **(my call)** are the designer's choices; he can overrule them.
 

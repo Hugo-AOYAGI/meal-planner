@@ -9,10 +9,11 @@ import { Label } from "@/components/ui/inputs/label";
 import { useSettings, useUpdateSettings } from "@/lib/api/queries";
 import { MembersList } from "./MembersList";
 import { PreferencesList } from "./PreferencesList";
+import { ReminderSwitch } from "./ReminderSwitch";
 
 /**
  * Household size (default servings of new slots), the moments a draw starts with, the draw game's players
- * and quick-meal limit, and the household preferences.
+ * and quick-meal limit, this device's leftover reminders, and the household preferences.
  */
 export function SettingsPopover() {
   const [open, setOpen] = useState(false);
@@ -53,6 +54,7 @@ export function SettingsPopover() {
           </Label>
         ))}
       </div>
+      <ReminderSwitch />
       <MembersList settings={settings} />
       <PreferencesList />
     </Overlay>

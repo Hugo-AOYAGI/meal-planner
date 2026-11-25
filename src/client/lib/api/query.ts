@@ -31,6 +31,8 @@ export const keys = {
     week: (week: string) => ["plan", week] as const,
     /** a run of days from `from`; `scroll` is the planning's endless list */
     days: (from: string, days: number | "scroll") => ["plan", "days", from, days] as const,
+    /** the leftovers in the fridge: they follow the plan */
+    fridge: ["plan", "fridge"] as const,
   },
   shopping: {
     all: ["shopping"] as const,
