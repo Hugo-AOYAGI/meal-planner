@@ -6,6 +6,7 @@ import { scheduleBackgroundJobs } from "./agent/background";
 import { chatRoute } from "./agent/chat-route";
 import { scheduleNightlyBackup } from "./backup";
 import { emitOnWrite, eventsRoute } from "./events";
+import { scheduleReminders } from "./services/fridge/reminders";
 import { api } from "./routes";
 
 const PORT = Number(process.env.PORT ?? 4173);
@@ -29,6 +30,7 @@ if (existsSync(dist)) {
 }
 
 scheduleNightlyBackup();
+if (process.env.DB_PATH !== ":memory:") scheduleReminders();
 if (process.env.MEAL_PLANNER_BACKGROUND !== "off") scheduleBackgroundJobs();
 
 // idleTimeout 0: a chat stream can stay silent for a long time while the agent runs a tool (Bun's default cuts it at 10 s).

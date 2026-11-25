@@ -1,4 +1,4 @@
-import { ChevronRight, Plus, X } from "lucide-react";
+import { ChevronRight, PackagePlus, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { COURSE_LABELS, courseOf } from "@shared/constants";
 import type { Slot, SlotEntryInput } from "@shared/schemas";
@@ -32,6 +32,8 @@ export function SlotEditor({ slot, onClose, onView }: SlotEditorProps) {
   const setSlot = useSetSlot();
   const [adding, setAdding] = useState(false);
   const [servings, setServings] = useState(slot.servings);
+  // entries whose "à garder" line was opened by hand; one with portions kept always shows it
+  const [keeping, setKeeping] = useState<number[]>([]);
   const entries: SlotEntryInput[] = slot.entries.map((e) => ({
     mealId: e.mealId,
     recipeId: e.recipeId,
@@ -40,6 +42,10 @@ export function SlotEditor({ slot, onClose, onView }: SlotEditorProps) {
   const headed = courses.some((c) => c !== "plat");
   const save = (next: typeof entries) =>
     setSlot.mutate({ date: slot.date, moment: slot.moment, entries: next });
+  const setKeep = (i: number, keep: number) => {
+    save(entries.map((e, j) => (j === i ? { ...e, keep } : e)));
+    if (keep === 0) setKeeping((ids) => ids.filter((id) => id !== slot.entries[i]!.id));
+  };
 
   return (
     <div className="flex flex-col gap-3">
@@ -60,6 +66,7 @@ export function SlotEditor({ slot, onClose, onView }: SlotEditorProps) {
               onClick={() => onView(entry.mealId, entry.recipeId)}
               className="-ml-2 flex min-h-9 min-w-0 flex-1 items-center gap-1 rounded-md px-2 text-left text-[15px] font-bold outline-none hover:bg-subtle focus-visible:bg-subtle active:bg-active max-md:min-h-11"
             >
+              {entry.leftoverId && <span className="micro-label shrink-0">Restes</span>}
               <span className="truncate">{entry.mealName}</span>
               {!entry.excluded && <span className="micro-label shrink-0 pl-1">aux courses</span>}
               <ChevronRight className="size-4 shrink-0 text-dim" />
@@ -91,6 +98,18 @@ export function SlotEditor({ slot, onClose, onView }: SlotEditorProps) {
                 </SelectContent>
               </Select>
             )}
+            {!entry.leftoverId && entry.keep === 0 && !keeping.includes(entry.id) && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Garder des parts pour plus tard"
+                title="Garder des parts pour plus tard"
+                className="text-dim"
+                onClick={() => setKeeping((ids) => [...ids, entry.id])}
+              >
+                <PackagePlus />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon-sm"
@@ -102,6 +121,12 @@ export function SlotEditor({ slot, onClose, onView }: SlotEditorProps) {
             >
               <X />
             </Button>
+            {!entry.leftoverId && (entry.keep > 0 || keeping.includes(entry.id)) && (
+              <span className="flex w-full items-center gap-2 pb-1">
+                <ServingsStepper value={entry.keep} min={0} max={30} onChange={(n) => setKeep(i, n)} />
+                <span className="micro-label">parts à garder</span>
+              </span>
+            )}
           </li>
         ))}
       </ul>

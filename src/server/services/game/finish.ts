@@ -1,6 +1,8 @@
 import type { GameCard } from "@shared/schemas";
 import { deleteMeal, getMeal, updateMeal } from "../catalog/meals";
 import { applySuggestions } from "../planning/draw";
+import { eatLeftover } from "../fridge/leftovers";
+import { applySlot } from "../planning/plan";
 import { slotKey } from "./deal";
 import { countIdeaRefusal, removeFromReserve, type Game } from "./store";
 
@@ -25,10 +27,17 @@ export function validate(game: Game): void {
     const card = byId.get(game.placement[slotKey(slot)] ?? "");
     return card ? [{ slot, card }] : [];
   });
-  if (placed.length) applySuggestions(placed.map(({ slot, card }) => ({ ...slot, meals: card.meals })));
-  for (const { card } of placed) {
+  // a leftover is eaten from the fridge: it takes the main's place (starter and dessert stay); the other cards are planned as drawn
+  const cooked = placed.filter(({ card }) => card.tag !== "leftover");
+  if (cooked.length) applySuggestions(cooked.map(({ slot, card }) => ({ ...slot, meals: card.meals })));
+  for (const { slot, card } of placed) {
+    if (card.tag !== "leftover" || !card.leftoverId) continue;
+    applySlot({ date: slot.date, moment: slot.moment, entries: slot.kept });
+    eatLeftover(card.leftoverId, slot);
+  }
+  for (const { card } of cooked) {
     for (const { id } of card.meals) if (getMeal(id).status === "idea") updateMeal(id, { status: "to_try" });
   }
-  removeFromReserve(placed.map(({ card }) => card.meals[0]!.id));
+  removeFromReserve(cooked.map(({ card }) => card.meals[0]!.id));
   game.phase = "done";
 }

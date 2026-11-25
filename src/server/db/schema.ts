@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, real, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
-import type { Aisle, IngredientSource, MealKind, MealStatus, Moment } from "@shared/constants";
+import { type AnySQLiteColumn, index, integer, primaryKey, real, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import type { Aisle, IngredientSource, LeftoverEnd, MealKind, MealStatus, Moment } from "@shared/constants";
 import type { Extras100 } from "@shared/nutrients";
 
 /** Read-only reference imported from ANSES Ciqual (per 100 g). */
@@ -46,6 +46,8 @@ export const meal = sqliteTable("meal", {
   kind: text("kind").$type<MealKind>().notNull().default("plat"),
   status: text("status").$type<MealStatus>().notNull().default("regular"),
   notes: text("notes"),
+  /** portions kept the last time it was planned: proposed again when it is planned next */
+  lastKeep: integer("last_keep").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -101,9 +103,42 @@ export const planEntry = sqliteTable(
     position: integer("position").notNull().default(0),
     /** left out of the shopping list: newly planned meals start out, they are put in by hand; `applySlot` carries it over when a slot is rewritten */
     excluded: integer("excluded", { mode: "boolean" }).notNull().default(false),
+    /** portions cooked on top of the slot's servings, to be kept: they make a `leftover` of the slot */
+    keep: integer("keep").notNull().default(0),
+    /** this entry eats from a leftover (the slot's servings come out of it): not cooked, not in the shopping list */
+    leftoverId: integer("leftover_id").references((): AnySQLiteColumn => leftover.id, { onDelete: "set null" }),
   },
   (t) => [index("plan_entry_slot").on(t.slotId), index("plan_entry_meal").on(t.mealId)],
 );
+
+/**
+ * Portions in the fridge: those kept from a planned meal (`slotId` and `mealId`, made by `applySlot`) or added by hand
+ * (`name`, or a `mealId` without a slot). What remains is `portions` less the servings of the plan entries eating from it.
+ */
+export const leftover = sqliteTable(
+  "leftover",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    slotId: integer("slot_id").references(() => planSlot.id, { onDelete: "cascade" }),
+    mealId: integer("meal_id").references(() => meal.id, { onDelete: "cascade" }),
+    name: text("name"),
+    /** the day it was cooked: its age counts from there, and it is in the fridge from that day on */
+    createdOn: text("created_on").notNull(),
+    portions: integer("portions").notNull(),
+    /** set when it is declared finished or thrown away */
+    doneOn: text("done_on"),
+    doneReason: text("done_reason").$type<LeftoverEnd>(),
+  },
+  (t) => [unique("leftover_slot_meal").on(t.slotId, t.mealId)],
+);
+
+/** A device that receives the leftover reminders (Web Push). */
+export const pushSubscription = sqliteTable("push_subscription", {
+  endpoint: text("endpoint").primaryKey(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 
 /**
  * A row means the ingredient is bought for one planned meal (its slot and meal): a meal planned or put in the list

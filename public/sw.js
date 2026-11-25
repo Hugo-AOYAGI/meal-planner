@@ -73,3 +73,29 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+
+// Leftover reminders (see src/server/services/fridge/reminders.ts): `{ title, body, url }`
+self.addEventListener("push", (event) => {
+  const data = event.data ? event.data.json() : {};
+  event.waitUntil(
+    self.registration.showNotification(data.title ?? "Restes", {
+      body: data.body ?? "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: "leftovers", // a new reminder replaces yesterday's
+      data: { url: data.url ?? "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url ?? "/", location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => new URL(w.url).origin === location.origin);
+      if (open) return open.navigate(url).then((w) => (w ?? open).focus());
+      return self.clients.openWindow(url);
+    }),
+  );
+});

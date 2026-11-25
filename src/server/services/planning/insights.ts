@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lte, max } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNull, lte, max } from "drizzle-orm";
 import { NUTRIENTS } from "@shared/constants";
 import { today } from "@shared/dates";
 import { EXTRA_NUTRIENT_KEYS } from "@shared/nutrients";
@@ -17,7 +17,7 @@ export function getHistory(from: string, to: string) {
     .from(planEntry)
     .innerJoin(planSlot, eq(planSlot.id, planEntry.slotId))
     .innerJoin(meal, eq(meal.id, planEntry.mealId))
-    .where(and(gte(planSlot.date, from), lte(planSlot.date, end)))
+    .where(and(gte(planSlot.date, from), lte(planSlot.date, end), isNull(planEntry.leftoverId)))
     .groupBy(meal.id)
     .orderBy(desc(times), meal.name)
     .all();

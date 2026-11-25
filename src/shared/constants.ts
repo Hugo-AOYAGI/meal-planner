@@ -23,6 +23,10 @@ export const byCourse = <T extends { mealKind: MealKind }>(entries: T[]): T[] =>
 export const MEAL_STATUSES = ["regular", "to_try", "idea"] as const;
 export type MealStatus = (typeof MEAL_STATUSES)[number];
 
+/** How a leftover left the fridge, when it is declared rather than eaten through the plan. */
+export const LEFTOVER_ENDS = ["eaten", "thrown"] as const;
+export type LeftoverEnd = (typeof LEFTOVER_ENDS)[number];
+
 /** The agents the chat can run on. */
 export const ASSISTANTS = ["claude", "codex"] as const;
 export type Assistant = (typeof ASSISTANTS)[number];

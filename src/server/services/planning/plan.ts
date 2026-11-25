@@ -7,6 +7,7 @@ import { meal, planEntry, planSlot, recipe } from "../../db/schema";
 import { AppError, notFound } from "../support/errors";
 import { getRecipes } from "../catalog/recipes";
 import { getSettings } from "../support/settings";
+import { syncKeptLeftovers } from "../fridge/leftovers";
 
 /** The 14 slots of the week containing `week` (default: current week), with entries and nutrition. */
 export function getWeek(week?: string): WeekPlan {
@@ -58,6 +59,8 @@ export function getDays(from: string, days: number): DayPlan {
             recipeOptions: options.filter((o) => o.mealId === m.id).map(({ id, name }) => ({ id, name })),
             kcalPerPerson: r && r.nutrition.linesCounted > 0 ? r.nutrition.perPerson.kcal : null,
             excluded: e.excluded,
+            keep: e.keep,
+            leftoverId: e.leftoverId,
           };
         });
       // served in course order, whatever the order they were added in
@@ -100,11 +103,12 @@ export function getDays(from: string, days: number): DayPlan {
 /** Writes a slot without building the week view (used by the draw). */
 export function applySlot({ date, moment, servings, entries }: SetSlotInput): void {
   const resolved = entries?.map((e, position) => {
-    if (!db.select({ id: meal.id }).from(meal).where(eq(meal.id, e.mealId)).get()) throw notFound("Repas", e.mealId);
+    const m = db.select({ id: meal.id, lastKeep: meal.lastKeep }).from(meal).where(eq(meal.id, e.mealId)).get();
+    if (!m) throw notFound("Repas", e.mealId);
     const recipes = db.select({ id: recipe.id }).from(recipe).where(eq(recipe.mealId, e.mealId)).orderBy(asc(recipe.position), asc(recipe.id)).all();
     const recipeId = e.recipeId === undefined ? (recipes[0]?.id ?? null) : e.recipeId;
     if (recipeId !== null && !recipes.some((r) => r.id === recipeId)) throw new AppError(`La recette ${recipeId} n'appartient pas au repas ${e.mealId}`);
-    return { mealId: e.mealId, recipeId, position };
+    return { mealId: e.mealId, recipeId, position, keep: e.keep, leftoverId: e.leftoverId, lastKeep: m.lastKeep };
   });
   db.transaction((tx) => {
     const existing = tx.select().from(planSlot).where(and(eq(planSlot.date, date), eq(planSlot.moment, moment))).get();
@@ -115,16 +119,28 @@ export function applySlot({ date, moment, servings, entries }: SetSlotInput): vo
       tx.update(planSlot).set({ servings }).where(eq(planSlot.id, existing.id)).run();
     }
     if (resolved) {
-      // entries are rewritten: a meal that stays in the slot keeps its shopping choice; a new one starts out of the list
-      // (it is put in the list by hand, see `setShoppingExclusion`)
-      const kept = tx.select({ mealId: planEntry.mealId, excluded: planEntry.excluded }).from(planEntry).where(eq(planEntry.slotId, slotId!)).all();
+      // entries are rewritten: a meal that stays in the slot keeps its shopping choice, its portions to keep and the
+      // leftover it eats from; a new one starts out of the list (put in by hand, see `setShoppingExclusion`) and keeps
+      // as many portions as the last time it was planned
+      const before = tx
+        .select({ mealId: planEntry.mealId, excluded: planEntry.excluded, keep: planEntry.keep, leftoverId: planEntry.leftoverId })
+        .from(planEntry)
+        .where(eq(planEntry.slotId, slotId!))
+        .all();
+      const unmatched = [...before];
       tx.delete(planEntry).where(eq(planEntry.slotId, slotId!)).run();
       const values = resolved.map((r) => {
-        const i = kept.findIndex((k) => k.mealId === r.mealId);
-        const excluded = i >= 0 ? kept.splice(i, 1)[0]!.excluded : true;
-        return { ...r, slotId: slotId!, excluded };
+        const i = unmatched.findIndex((k) => k.mealId === r.mealId);
+        const prev = i >= 0 ? unmatched.splice(i, 1)[0] : undefined;
+        const leftoverId = r.leftoverId !== undefined ? r.leftoverId : (prev?.leftoverId ?? null);
+        const keep = leftoverId ? 0 : (r.keep ?? prev?.keep ?? r.lastKeep);
+        // portions eaten from the fridge are not bought
+        const excluded = leftoverId ? true : (prev?.excluded ?? true);
+        if (!leftoverId && r.keep !== undefined && r.keep !== prev?.keep) tx.update(meal).set({ lastKeep: r.keep }).where(eq(meal.id, r.mealId)).run();
+        return { mealId: r.mealId, recipeId: r.recipeId, position: r.position, slotId: slotId!, excluded, keep, leftoverId };
       });
       if (values.length) tx.insert(planEntry).values(values).run();
+      syncKeptLeftovers(tx, slotId!, date, before, values);
     }
   });
 }

@@ -8,6 +8,7 @@ import { getDays } from "../planning/plan";
 import { AppError } from "../support/errors";
 import { getSettings } from "../support/settings";
 import { readReserve } from "./store";
+import { listFridge } from "../fridge/leftovers";
 
 export const slotKey = (slot: { date: string; moment: Moment }) => `${slot.date}/${slot.moment}`;
 
@@ -64,7 +65,7 @@ const statusFits = (status: DrawStatus, mealStatus: string) =>
   status === "all" || mealStatus === status || mealStatus === "idea";
 
 /**
- * Deals `count` cards: a couple of reserve cards ("envies communes") when eligible, one "Nouveau" card
+ * Deals `count` cards: in a quick game the fridge's leftovers first, then a couple of reserve cards ("envies communes") when eligible, one "Nouveau" card
  * (a meal to try, never cooked, or an assistant idea), the rest drawn like the regular draw.
  */
 export function dealCards({ mode, options, count, exclude, nextId, random, reserve, withNew = true }: DealInput): GameCard[] {
@@ -91,6 +92,14 @@ export function dealCards({ mode, options, count, exclude, nextId, random, reser
   };
   const free = (mealIds: number[]) =>
     mealIds.every((id) => known.has(id) && !taken.has(id) && statusFits(options.status, known.get(id)!.status)) && fits(mealIds);
+
+  // a quick game starts with what is in the fridge, oldest first: nothing to cook
+  if (mode === "quick") {
+    for (const l of listFridge().filter((l) => l.mealId !== null && !taken.has(l.mealId)).slice(0, count)) {
+      taken.add(l.mealId!);
+      cards.push({ id: nextId(), meals: [{ id: l.mealId!, name: l.name }], durationMin: null, tag: "leftover", leftoverId: l.id, age: l.age });
+    }
+  }
 
   // envies communes: the oldest first, one per hand at most
   const reserveSlots = reserve ?? Math.min(RESERVE_PER_HAND, Math.floor(count / 3));

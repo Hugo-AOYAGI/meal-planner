@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { AppError } from "../services/support/errors";
+import { fridgeRoute, pushRoute } from "./fridge";
 import { gameRoute } from "./game";
 import { ciqualRoute, ingredientsRoute } from "./resources/ingredients";
 import { mealsRoute } from "./resources/meals";
@@ -18,7 +19,9 @@ export const api = new Hono()
   .route("/plan", planRoute)
   .route("/settings", settingsRoute)
   .route("/game", gameRoute)
-  .route("/shopping", shoppingRoute);
+  .route("/shopping", shoppingRoute)
+  .route("/fridge", fridgeRoute)
+  .route("/push", pushRoute);
 
 api.onError((err, c) => {
   if (err instanceof AppError) return c.json({ error: err.message }, err.status);

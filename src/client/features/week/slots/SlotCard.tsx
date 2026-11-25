@@ -37,6 +37,7 @@ export function SlotCard({ slot, day, variant, named }: SlotCardProps) {
   // the recipe opened from the editor: shown in its own sheet once the editor has closed
   const [viewing, setViewing] = useState<Parameters<DayEditorProps["onView"]>[0] | null>(null);
   const filled = slot.entries.length > 0;
+  const kept = slot.entries.reduce((sum, e) => sum + e.keep, 0);
   const label = `${MOMENT_LABELS[slot.moment]} ${slot.date}`;
   const momentLabel = row && named && <span className="micro-label">{MOMENT_LABELS[slot.moment]}</span>;
 
@@ -85,6 +86,7 @@ export function SlotCard({ slot, day, variant, named }: SlotCardProps) {
             {mains.map((entry, i) => (
               <span key={entry.id} className={cn(!row && "block", i === 0 ? "font-bold" : "font-medium")}>
                 {i > 0 && <span className="text-dim">{row ? " + " : "+ "}</span>}
+                {entry.leftoverId && <span className="font-medium text-dim">Restes · </span>}
                 {entry.mealName}
               </span>
             ))}
@@ -92,9 +94,9 @@ export function SlotCard({ slot, day, variant, named }: SlotCardProps) {
         )}
         {side("dessert")}
       </span>
-      {slot.kcalPerPerson !== null && (
-        <span className={cn("text-xs text-dim tabular-nums", row ? "mt-0.5" : "absolute bottom-3 left-3 font-bold")}>
-          {formatNumber(slot.kcalPerPerson)} kcal
+      {(slot.kcalPerPerson !== null || kept > 0) && (
+        <span className={cn("text-xs text-dim tabular-nums", row ? "mt-0.5" : "absolute right-9 bottom-3 left-3 truncate font-bold")}>
+          {[slot.kcalPerPerson !== null && `${formatNumber(slot.kcalPerPerson)} kcal`, kept > 0 && `+${kept} à garder`].filter(Boolean).join(" · ")}
         </span>
       )}
     </button>

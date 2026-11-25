@@ -13,6 +13,7 @@ import { useToday } from "@/features/week/days/use-today";
 import { DrawDialog } from "@/features/week/draw/DrawDialog";
 import { DrawButtons, JoinBanner } from "@/features/week/draw/DrawEntry";
 import { useGameSession } from "@/features/week/draw/use-game-session";
+import { FridgeList } from "@/features/week/fridge/FridgeList";
 import { SettingsPopover } from "@/features/week/settings/SettingsPopover";
 
 /** The planning from today on: one list that loads further days as it is scrolled, and older ones when scrolled back. */
@@ -23,6 +24,8 @@ export function PlanningPage() {
   const toolbar = useRef<HTMLDivElement>(null);
   const jump = useToday(from, Boolean(plan.slots), page, toolbar);
   const game = useGameSession();
+  const past = plan.slots?.filter((s) => s.date < from) ?? [];
+  const coming = plan.slots?.filter((s) => s.date >= from) ?? [];
 
   return (
     <div ref={page}>
@@ -41,7 +44,18 @@ export function PlanningPage() {
       </div>
       <DrawDialog session={game} />
       {plan.hasPreviousPage && <PreviousDays load={plan.fetchPreviousPage} disabled={plan.isFetchingPreviousPage} />}
-      {plan.slots ? <DayGrid slots={plan.slots} /> : <Skeleton className="h-[32rem] w-full md:h-80" />}
+      {plan.slots ? (
+        <>
+          {past.length > 0 && <DayGrid slots={past} className="mb-1.5 md:mb-5" />}
+          {/* the fridge sits right above today: the planning opens there (see useToday) */}
+          <div data-plan-start>
+            <FridgeList />
+            <DayGrid slots={coming} />
+          </div>
+        </>
+      ) : (
+        <Skeleton className="h-[32rem] w-full md:h-80" />
+      )}
       {plan.hasNextPage && <Skeleton ref={plan.sentinel} className="mt-5 h-40 w-full" />}
       {jump.place !== "here" && (
         <button

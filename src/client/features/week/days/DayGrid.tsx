@@ -43,13 +43,14 @@ const isFirstOfMonth = (day: Day) => dateOf(day).endsWith("-01");
 interface DayGridProps {
   /** consecutive days, 2 slots each (midi, soir), in date order */
   slots: Slot[];
+  className?: string;
 }
 
 /**
  * Dinners are the planning; a lunch shows only once it has a meal. Any card of a day opens both of its meals.
  * Grid: 7 days per row, with a lunch row as soon as one day of the row has a lunch. Phones: one block per day.
  */
-export function DayGrid({ slots }: DayGridProps) {
+export function DayGrid({ slots, className }: DayGridProps) {
   const mobile = useIsMobile();
   const days: Day[] = [];
   for (let i = 0; i + 1 < slots.length; i += 2) days.push({ midi: slots[i]!, soir: slots[i + 1]! });
@@ -59,7 +60,7 @@ export function DayGrid({ slots }: DayGridProps) {
 
   if (mobile) {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className={cn("flex flex-col gap-1.5", className)}>
         {days.map((day) => {
           const date = dateOf(day);
           const planned = hasLunch(day) || day.soir.entries.length > 0;
@@ -87,7 +88,7 @@ export function DayGrid({ slots }: DayGridProps) {
   // the moment column only appears once there are two rows to tell apart; every row of days keeps the same columns
   const labelled = days.some(hasLunch);
   return (
-    <div className="flex flex-col gap-5 [--slot-h:clamp(8.75rem,21dvh,12.5rem)]">
+    <div className={cn("flex flex-col gap-5 [--slot-h:clamp(8.75rem,21dvh,12.5rem)]", className)}>
       {rows.map((row) => {
         const moments = MOMENTS.filter((m) => m === "soir" || row.some(hasLunch));
         return (
