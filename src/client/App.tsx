@@ -120,7 +120,7 @@ export function App() {
           <TabNav
             current={tab.id}
             onSelect={setTab}
-            className="box-content flex h-14 shrink-0 pb-[env(safe-area-inset-bottom)]"
+            className="box-content flex h-14 shrink-0 pb-[env(safe-area-inset-bottom)] keyboard:hidden"
           />
         )}
       </div>

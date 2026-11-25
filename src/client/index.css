@@ -5,6 +5,8 @@
 
 /* dark: never active (light mode only); keeps shadcn dark: classes inert instead of following the OS. */
 @custom-variant dark (&:is(.dark *));
+/* the on-screen keyboard is up, see lib/keyboard.ts */
+@custom-variant keyboard (&:is([data-keyboard] *));
 
 /* Light mode only. "Marché": cream page, ink text, flat blocks of colour, almost no lines.
    shadcn variables are mapped onto these tokens below. */
