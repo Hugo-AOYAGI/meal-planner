@@ -81,7 +81,7 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title ?? "Restes", {
       body: data.body ?? "",
       icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      badge: "/badge-96.png", // the status bar icon: Android keeps only its shape (alpha), so a colour icon is a plain square
       tag: "leftovers", // a new reminder replaces yesterday's
       data: { url: data.url ?? "/" },
     }),
