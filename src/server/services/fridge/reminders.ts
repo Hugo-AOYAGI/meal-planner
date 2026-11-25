@@ -55,9 +55,8 @@ export async function sendReminder(): Promise<number> {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, {
         vapidDetails: { subject: SUBJECT, publicKey, privateKey },
+        // normal urgency: Android may hold it until the phone wakes, which is fine for a reminder
         TTL: 6 * 3600,
-        // a normal-urgency push waits on Android until the phone wakes or Chrome opens: the reminder is due now
-        urgency: "high",
       });
       sent++;
     } catch (e) {
