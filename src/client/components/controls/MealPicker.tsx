@@ -32,7 +32,7 @@ export function MealPicker({ onPick, title, onDraw }: MealPickerProps) {
   const [course, setCourse] = useState<Course>("plat");
   const draw = course === "plat" ? onDraw : undefined;
   return (
-    <Command filter={accentInsensitive} className="p-0">
+    <Command filter={accentInsensitive} className="p-0" data-keyboard-reveal>
       {/* the input comes first in the DOM so it, not the dice, takes the initial focus */}
       <div className="flex flex-col-reverse">
         <CommandInput placeholder={PLACEHOLDERS[course]} />
@@ -49,7 +49,7 @@ export function MealPicker({ onPick, title, onDraw }: MealPickerProps) {
           </div>
         )}
       </div>
-      <CommandList className="pt-2 max-md:max-h-[50dvh]">
+      <CommandList className="pt-2 max-md:max-h-[50dvh] keyboard:max-h-[calc(100dvh-8rem)]">
         <CommandEmpty>{meals.isPending ? "…" : "Aucun repas"}</CommandEmpty>
         {meals.data
           ?.filter((m) => courseOf(m.kind) === course)

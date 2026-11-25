@@ -39,10 +39,11 @@ export function IngredientPicker({ value, onChange, onCreate }: IngredientPicker
           <ChevronsUpDown className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 gap-0 p-0">
-        <Command shouldFilter={false} className="p-0">
+      {/* fits the room left by the keyboard: the list scrolls instead of going under it */}
+      <PopoverContent align="start" className="max-h-(--radix-popover-content-available-height) w-72 gap-0 p-0">
+        <Command shouldFilter={false} className="min-h-0 p-0">
           <CommandInput placeholder="Rechercher" value={search} onValueChange={setSearch} />
-          <CommandList>
+          <CommandList className="min-h-0">
             <CommandEmpty>Aucun ingrédient</CommandEmpty>
             {list.data?.map((i) => (
               <CommandItem
