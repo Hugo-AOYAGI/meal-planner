@@ -11,6 +11,10 @@ export const slotEntryInputSchema = z.object({
   mealId: idSchema,
   /** defaults to the meal's first recipe (null when it has none) */
   recipeId: idSchema.nullable().optional(),
+  /** portions to keep on top of the slot's servings; omitted = unchanged for a meal already there, the meal's last choice for a new one */
+  keep: z.number().int().min(0).max(30).optional(),
+  /** eats from this leftover (see the fridge); omitted = unchanged for a meal already there */
+  leftoverId: idSchema.nullable().optional(),
 });
 export type SlotEntryInput = z.infer<typeof slotEntryInputSchema>;
 
@@ -37,6 +41,10 @@ export const slotEntrySchema = z.object({
   kcalPerPerson: z.number().nullable(),
   /** left out of the shopping list */
   excluded: z.boolean(),
+  /** portions cooked on top of the slot's servings, kept for later */
+  keep: z.number().int(),
+  /** eats from a leftover: shown as "Restes" */
+  leftoverId: idSchema.nullable(),
 });
 export type SlotEntry = z.infer<typeof slotEntrySchema>;
 

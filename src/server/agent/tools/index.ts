@@ -1,6 +1,8 @@
-import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
+import { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { readReference, searchReferences } from "./reference/knowledge";
+import { readReference, searchReferences } from "../reference/knowledge";
+import { define, withId } from "./define";
+import { fridgeTools } from "./fridge";
 import {
   ciqualSearchQuerySchema,
   dateSchema,
@@ -24,38 +26,17 @@ import {
   type Recipe,
   type WeekPlan,
 } from "@shared/schemas";
-import { searchCiqual } from "../services/catalog/ciqual";
-import { drawWeek, redrawSlot, suggestMeals } from "../services/planning/draw";
-import { AppError } from "../services/support/errors";
-import { createIngredient, deleteIngredient, getIngredient, searchIngredients, updateIngredient } from "../services/catalog/ingredients";
-import { getHistory, getNutritionSummary } from "../services/planning/insights";
-import { addPreference, removePreference } from "../services/catalog/preferences";
-import { createMeal, deleteMeal, getMeal, listMeals, updateMeal } from "../services/catalog/meals";
-import { getDays, getWeek, setSlot } from "../services/planning/plan";
-import { createRecipe, deleteRecipe, getRecipe, setDefaultRecipe, updateRecipe } from "../services/catalog/recipes";
-import { addShoppingExtra, deleteShoppingExtra, getShoppingList, setShoppingCheck, setShoppingExclusion, updateShoppingExtra } from "../services/planning/shopping";
+import { searchCiqual } from "../../services/catalog/ciqual";
+import { drawWeek, redrawSlot, suggestMeals } from "../../services/planning/draw";
+import { AppError } from "../../services/support/errors";
+import { createIngredient, deleteIngredient, getIngredient, searchIngredients, updateIngredient } from "../../services/catalog/ingredients";
+import { getHistory, getNutritionSummary } from "../../services/planning/insights";
+import { addPreference, removePreference } from "../../services/catalog/preferences";
+import { createMeal, deleteMeal, getMeal, listMeals, updateMeal } from "../../services/catalog/meals";
+import { getDays, getWeek, setSlot } from "../../services/planning/plan";
+import { createRecipe, deleteRecipe, getRecipe, setDefaultRecipe, updateRecipe } from "../../services/catalog/recipes";
+import { addShoppingExtra, deleteShoppingExtra, getShoppingList, setShoppingCheck, setShoppingExclusion, updateShoppingExtra } from "../../services/planning/shopping";
 
-const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
-
-function failure(e: unknown) {
-  const text =
-    e instanceof AppError ? e.message : e instanceof z.ZodError ? `Entrée invalide : ${z.prettifyError(e)}` : "Erreur interne";
-  if (!(e instanceof AppError || e instanceof z.ZodError)) console.error(e);
-  return { content: [{ type: "text" as const, text }], isError: true };
-}
-
-/** A tool built from a zod object: input is parsed with the schema (applying defaults), errors become isError results. */
-function define<S extends z.ZodObject>(name: string, description: string, schema: S, run: (input: z.output<S>) => unknown) {
-  return tool(name, description, schema.shape, async (args) => {
-    try {
-      return json(run(schema.parse(args)));
-    } catch (e) {
-      return failure(e);
-    }
-  });
-}
-
-const withId = <S extends z.ZodObject>(patch: S) => z.object({ id: idSchema, ...patch.shape });
 
 /** Recipe without the nested ingredient objects: the model needs ids, names and quantities only. */
 const compactRecipe = (r: Recipe) => ({
@@ -239,4 +220,4 @@ export const appTools = [
   ),
 ];
 
-export const appServer = createSdkMcpServer({ name: "app", tools: appTools });
+export const appServer = createSdkMcpServer({ name: "app", tools: [...appTools, ...fridgeTools] });

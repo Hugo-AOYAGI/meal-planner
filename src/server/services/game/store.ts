@@ -91,6 +91,7 @@ const sameMain = (a: number[], b: number[]) => a[0] === b[0];
 export function addToReserve(cards: GameCard[]): void {
   const reserve = readReserve();
   for (const card of cards) {
+    if (card.tag === "leftover") continue; // eaten from the fridge or not at all: not an "envie commune"
     const mealIds = card.meals.map((m) => m.id);
     if (!reserve.some((r) => sameMain(r.mealIds, mealIds))) reserve.push({ mealIds, added: today() });
   }

@@ -1,4 +1,4 @@
-import { and, count, eq, lte, max, ne } from "drizzle-orm";
+import { and, count, eq, isNull, lte, max, ne } from "drizzle-orm";
 import { today } from "@shared/dates";
 import { normalize } from "@shared/text";
 import type { MealDetail, MealInput, MealListQuery, MealSummary, MealUpdate } from "@shared/schemas";
@@ -7,13 +7,13 @@ import { ingredient, meal, planEntry, planSlot, recipe, recipeIngredient } from 
 import { notFound } from "../support/errors";
 import { listRecipes } from "./recipes";
 
-/** lastCooked / timesCooked come from plan entries dated today or earlier. */
+/** lastCooked / timesCooked come from plan entries dated today or earlier; leftovers eaten were not cooked then. */
 function summaries(where?: ReturnType<typeof and>): MealSummary[] {
   const cooked = db
     .select({ mealId: planEntry.mealId, last: max(planSlot.date), times: count() })
     .from(planEntry)
     .innerJoin(planSlot, eq(planSlot.id, planEntry.slotId))
-    .where(lte(planSlot.date, today()))
+    .where(and(lte(planSlot.date, today()), isNull(planEntry.leftoverId)))
     .groupBy(planEntry.mealId)
     .all();
   const recipes = db.select({ mealId: recipe.mealId, n: count() }).from(recipe).groupBy(recipe.mealId).all();
@@ -24,7 +24,7 @@ function summaries(where?: ReturnType<typeof and>): MealSummary[] {
     .from(meal)
     .where(where)
     .all()
-    .map(({ nameNorm: _n, createdAt: _c, ...m }) => ({
+    .map(({ nameNorm: _n, createdAt: _c, lastKeep: _k, ...m }) => ({
       ...m,
       lastCooked: cookedBy.get(m.id)?.last ?? null,
       timesCooked: cookedBy.get(m.id)?.times ?? 0,

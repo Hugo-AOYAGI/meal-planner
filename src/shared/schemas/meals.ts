@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ASSISTANTS } from "../constants";
+import { ASSISTANTS, LEFTOVER_ENDS } from "../constants";
 import {
   dateSchema, idSchema, ingredientSchema, mealKindSchema, mealStatusSchema,
   momentSchema, nutritionSchema, patchOf, queryInt,
@@ -136,3 +136,50 @@ export const preferenceInputSchema = z.object({ text: z.string().trim().min(1).m
 export type PreferenceInput = z.infer<typeof preferenceInputSchema>;
 export const preferenceSchema = preferenceInputSchema.extend({ id: idSchema });
 export type Preference = z.infer<typeof preferenceSchema>;
+
+// ---------- fridge ----------
+/** A leftover in the fridge: portions kept from a planned meal, or added by hand. */
+export const leftoverSchema = z.object({
+  id: idSchema,
+  /** the meal it comes from; null for one added by hand under a free name */
+  mealId: idSchema.nullable(),
+  name: z.string(),
+  /** the day it was cooked */
+  createdOn: dateSchema,
+  /** days since `createdOn` */
+  age: z.number().int(),
+  /** portions left */
+  remaining: z.number().int(),
+  /** added by hand rather than kept from a planned meal */
+  manual: z.boolean(),
+});
+export type Leftover = z.infer<typeof leftoverSchema>;
+
+/** A leftover added by hand: a meal of the library or a free name. */
+export const leftoverInputSchema = z
+  .object({
+    mealId: idSchema.optional(),
+    name: z.string().trim().min(1).max(120).optional(),
+    portions: z.number().int().min(1).max(30),
+    createdOn: dateSchema.optional(),
+  })
+  .refine((v) => v.mealId !== undefined || v.name !== undefined, "mealId ou name requis");
+export type LeftoverInput = z.infer<typeof leftoverInputSchema>;
+
+/** Corrects what is left (`remaining`), or takes it out of the fridge (`done`). */
+export const leftoverUpdateSchema = z.object({
+  remaining: z.number().int().min(0).max(30).optional(),
+  done: z.enum(LEFTOVER_ENDS).optional(),
+});
+export type LeftoverUpdate = z.infer<typeof leftoverUpdateSchema>;
+
+/** Eats a leftover at a meal: added to that slot as a "Restes" entry. */
+export const leftoverEatSchema = z.object({ date: dateSchema, moment: momentSchema });
+export type LeftoverEat = z.infer<typeof leftoverEatSchema>;
+
+/** A browser's Web Push subscription (`PushSubscription.toJSON()`). */
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(1000),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+});
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;

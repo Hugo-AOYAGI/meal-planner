@@ -13,11 +13,11 @@ import { getRecipes } from "../catalog/recipes";
 function planned(days: number) {
   const dates = daysFrom(today(), days);
   const entries = db
-    .select({ entryId: planEntry.id, excluded: planEntry.excluded, recipeId: planEntry.recipeId, servings: planSlot.servings, date: planSlot.date, moment: planSlot.moment, mealId: meal.id, mealName: meal.name })
+    .select({ entryId: planEntry.id, excluded: planEntry.excluded, recipeId: planEntry.recipeId, servings: planSlot.servings, keep: planEntry.keep, date: planSlot.date, moment: planSlot.moment, mealId: meal.id, mealName: meal.name })
     .from(planEntry)
     .innerJoin(planSlot, eq(planSlot.id, planEntry.slotId))
     .innerJoin(meal, eq(meal.id, planEntry.mealId))
-    .where(inArray(planSlot.date, dates))
+    .where(and(inArray(planSlot.date, dates), isNull(planEntry.leftoverId))) // leftovers eaten are not bought
     .orderBy(asc(planSlot.date), asc(planSlot.moment), asc(planEntry.position))
     .all();
   const recipes = new Map(getRecipes([...new Set(entries.flatMap((e) => (e.recipeId ? [e.recipeId] : [])))]).map((r) => [r.id, r]));
@@ -33,7 +33,7 @@ function planned(days: number) {
       unit: l.unit,
       grams: l.grams,
       baseServings: r!.servings,
-      slotServings: e.servings,
+      slotServings: e.servings + e.keep, // portions kept for later are cooked, so bought, too
       mealId: e.mealId,
       mealName: e.mealName,
       date: e.date,

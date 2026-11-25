@@ -12,8 +12,12 @@ export const gameCardSchema = z.object({
   meals: z.array(z.object({ id: idSchema, name: z.string() })).min(1),
   /** minutes of the longest part's default recipe; null when one part has no duration */
   durationMin: z.number().int().nullable(),
-  /** `new`: a dish never made yet; `reserve`: a past match both wanted but that had no slot ("envie commune") */
-  tag: z.enum(["new", "reserve"]).nullable(),
+  /** `new`: a dish never made yet; `reserve`: a past match both wanted but that had no slot ("envie commune"); `leftover`: in the fridge */
+  tag: z.enum(["new", "reserve", "leftover"]).nullable(),
+  /** for a `leftover` card: the leftover it eats from */
+  leftoverId: idSchema.optional(),
+  /** for a `leftover` card: its age in days */
+  age: z.number().int().optional(),
 });
 export type GameCard = z.infer<typeof gameCardSchema>;
 
